@@ -1,14 +1,13 @@
-// StatementFlow App Logic - Origin CSV Transformer
-// Outputs exact format matching origin-transaction-template.csv:
+// StatementFlow - Streamlined Origin CSV Converter
+// Strict output matching origin-transaction-template.csv:
 // Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)
 
 if (window.pdfjsLib) {
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
 let transactions = [];
 
-// Category & Merchant Auto-Detection Rules
 const categoryRules = [
   { category: 'Groceries', keywords: ['walmart', 'target', 'kroger', 'trader joe', 'whole foods', 'safeway', 'aldi', 'grocery', 'supermarket', 'costco'] },
   { category: 'Dining', keywords: ['starbucks', 'mcdonald', 'uber eats', 'doordash', 'grubhub', 'cafe', 'restaurant', 'burger', 'pizza', 'dunkin', 'taco'] },
@@ -20,62 +19,22 @@ const categoryRules = [
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
-  setupTabs();
   setupEvents();
 });
-
-function setupTabs() {
-  const tabs = document.querySelectorAll('.tab-btn');
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      
-      tab.classList.add('active');
-      const paneId = tab.getAttribute('data-tab');
-      document.getElementById(paneId).classList.add('active');
-    });
-  });
-}
 
 function setupEvents() {
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
-  const btnParseText = document.getElementById('btnParseText');
-  const btnClearText = document.getElementById('btnClearText');
   const btnExportCSV = document.getElementById('btnExportCSV');
-  const btnAddRow = document.getElementById('btnAddRow');
   const btnSampleData = document.getElementById('btnSampleData');
-  const tableSearch = document.getElementById('tableSearch');
   const selectAll = document.getElementById('selectAll');
   const defaultAccountInput = document.getElementById('defaultAccount');
   
-  // Format Controls
-  document.getElementById('dateFormat').addEventListener('change', renderTable);
   defaultAccountInput.addEventListener('input', () => {
     const defaultAcc = defaultAccountInput.value || 'My Bank';
     transactions.forEach(t => {
-      if (!t.account || t.account === 'My Bank') t.account = defaultAcc;
+      t.account = defaultAcc;
     });
-    renderTable();
-  });
-
-  // Date Range Controls
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-  const datePresetSelect = document.getElementById('datePreset');
-
-  startDateInput.addEventListener('change', () => {
-    datePresetSelect.value = 'custom';
-    renderTable();
-  });
-  endDateInput.addEventListener('change', () => {
-    datePresetSelect.value = 'custom';
-    renderTable();
-  });
-
-  datePresetSelect.addEventListener('change', (e) => {
-    applyDatePreset(e.target.value);
     renderTable();
   });
 
@@ -103,45 +62,8 @@ function setupEvents() {
     }
   });
 
-  btnParseText.addEventListener('click', () => {
-    const rawText = document.getElementById('rawTextInput').value;
-    if (rawText.trim()) {
-      parseRawText(rawText);
-    } else {
-      showStatus('Please paste statement text or select a file first.', 'error');
-    }
-  });
-
-  btnClearText.addEventListener('click', () => {
-    document.getElementById('rawTextInput').value = '';
-  });
-
   btnExportCSV.addEventListener('click', exportToOriginCSV);
-
-  btnAddRow.addEventListener('click', () => {
-    const today = new Date().toISOString().split('T')[0];
-    const defaultAcc = document.getElementById('defaultAccount').value || 'My Bank';
-    transactions.unshift({
-      id: generateId(),
-      date: today,
-      merchant: 'New Merchant',
-      category: 'Uncategorized',
-      account: defaultAcc,
-      description: 'Manual Entry',
-      notes: '',
-      amount: -10.00,
-      tags: '',
-      selected: true
-    });
-    renderTable();
-  });
-
   btnSampleData.addEventListener('click', loadSampleData);
-
-  tableSearch.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    renderTable(query);
-  });
 
   selectAll.addEventListener('change', (e) => {
     const isChecked = e.target.checked;
@@ -161,9 +83,8 @@ function showStatus(msg, type = 'success') {
   }
 }
 
-// Handle Uploaded File (CSV, TXT, or PDF)
 async function handleFile(file) {
-  showStatus(`Processing file: ${file.name}...`, 'success');
+  showStatus(`Processing: ${file.name}...`, 'success');
   if (file.name.endsWith('.csv') || file.type === 'text/csv') {
     const text = await file.text();
     parseCSVFile(text);
@@ -175,16 +96,13 @@ async function handleFile(file) {
   }
 }
 
-// Parse existing CSV Files (Amex, Apple Card, Chase, standard bank CSVs)
 function parseCSVFile(csvText) {
   const lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(l => l);
   if (lines.length === 0) return;
 
-  // Auto-detect delimiter (, or ;)
   const firstLine = lines[0];
   const delimiter = firstLine.includes(';') ? ';' : ',';
   
-  // Helper to split CSV row handling quotes
   const splitCSVRow = (line) => {
     const result = [];
     let current = '';
@@ -206,7 +124,6 @@ function parseCSVFile(csvText) {
 
   const headers = splitCSVRow(lines[0]).map(h => h.toLowerCase());
   
-  // Find column indices
   let dateIdx = headers.findIndex(h => h.includes('date'));
   let descIdx = headers.findIndex(h => h.includes('description') || h.includes('payee') || h.includes('name') || h.includes('title') || h.includes('transaction'));
   let merchantIdx = headers.findIndex(h => h.includes('merchant'));
@@ -235,7 +152,6 @@ function parseCSVFile(csvText) {
     if (amountIdx >= 0 && cols[amountIdx]) {
       amount = parseFloat(cols[amountIdx].replace(/[\$\s,]/g, '')) || 0;
     } else {
-      // search for numerical value in cols
       for (const col of cols) {
         const parsedNum = parseFloat(col.replace(/[\$\s,]/g, ''));
         if (!isNaN(parsedNum) && col.includes('.')) {
@@ -262,14 +178,12 @@ function parseCSVFile(csvText) {
   if (parsed.length > 0) {
     transactions = parsed;
     renderTable();
-    showStatus(`Successfully parsed ${parsed.length} rows from CSV!`, 'success');
+    showStatus(`Parsed ${parsed.length} rows into Origin format!`, 'success');
   } else {
-    // Fallback to text parsing if column parsing didn't match
     parseRawText(csvText);
   }
 }
 
-// PDF Parser using PDF.js
 async function parsePDFFile(file) {
   try {
     const arrayBuffer = await file.arrayBuffer();
@@ -295,21 +209,17 @@ async function parsePDFFile(file) {
       fullText += pageText + '\n';
     }
 
-    document.getElementById('rawTextInput').value = fullText;
     parseRawText(fullText);
-    showStatus(`Successfully extracted text from ${pdf.numPages} PDF pages`, 'success');
   } catch (err) {
-    console.error('PDF parsing error:', err);
-    showStatus('Failed to read PDF. Try copying & pasting into Text tab.', 'error');
+    console.error('PDF error:', err);
+    showStatus('Error reading PDF file.', 'error');
   }
 }
 
-// Parse Raw Text
 function parseRawText(text) {
   const lines = text.split(/\r?\n/);
   const parsed = [];
   const defaultAcc = document.getElementById('defaultAccount').value || 'My Bank';
-
   const dateRegex = /\b(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}|\d{4}[\/\.-]\d{1,2}[\/\.-]\d{1,2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}(?:,\s*\d{2,4})?)\b/i;
 
   for (let line of lines) {
@@ -320,14 +230,12 @@ function parseRawText(text) {
     if (dateMatch) {
       const rawDate = dateMatch[0];
       const normalizedDate = normalizeDate(rawDate);
-
       const amounts = Array.from(line.matchAll(/[\+\-]?\$?\s*\d{1,3}(?:,\d{3})*\.\d{2}\b/g));
       
       if (amounts.length > 0) {
         const amtStr = amounts[0][0];
         let numVal = parseFloat(amtStr.replace(/[\$\s,]/g, ''));
-
-        let isDebit = numVal < 0 || line.includes('-') || line.toUpperCase().includes('DR') || line.toUpperCase().includes('DEBIT') || line.toUpperCase().includes('PAYMENT');
+        let isDebit = numVal < 0 || line.includes('-') || line.toUpperCase().includes('DR') || line.toUpperCase().includes('DEBIT');
         if (line.toUpperCase().includes('CREDIT') || line.toUpperCase().includes('DEPOSIT') || line.includes('+')) {
           isDebit = false;
         }
@@ -339,14 +247,11 @@ function parseRawText(text) {
         desc = desc.replace(/^[-\:\,\s]+|[规律-\:\,\s]+$/g, '');
         if (!desc) desc = 'Transaction';
 
-        const merchant = extractMerchantName(desc);
-        const category = autoCategorizeText(desc);
-
         parsed.push({
           id: generateId(),
           date: normalizedDate,
-          merchant: merchant,
-          category: category,
+          merchant: extractMerchantName(desc),
+          category: autoCategorizeText(desc),
           account: defaultAcc,
           description: desc,
           notes: '',
@@ -361,21 +266,18 @@ function parseRawText(text) {
   if (parsed.length > 0) {
     transactions = parsed;
     renderTable();
-    showStatus(`Extracted ${parsed.length} transactions successfully!`, 'success');
-  } else {
-    showStatus('Could not parse text. Ensure text includes dates and amounts.', 'error');
+    showStatus(`Extracted ${parsed.length} rows into Origin format!`, 'success');
   }
 }
 
-// Extract Merchant Name from Raw Description
 function extractMerchantName(desc) {
-  let cleaned = desc.replace(/#\d+|\bSQ\b|\bTST\b|\bPAYPAL\b|\bINC\b|\bLLC\b|\bSTORE\b/gi, '').trim();
+  let cleaned = (desc || '').replace(/#\d+|\bSQ\b|\bTST\b|\bPAYPAL\b|\bINC\b|\bLLC\b|\bSTORE\b/gi, '').trim();
   const words = cleaned.split(/\s+/).slice(0, 3).join(' ');
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Merchant';
 }
 
 function autoCategorizeText(desc) {
-  const lower = desc.toLowerCase();
+  const lower = (desc || '').toLowerCase();
   for (const rule of categoryRules) {
     for (const kw of rule.keywords) {
       if (lower.includes(kw)) {
@@ -383,7 +285,7 @@ function autoCategorizeText(desc) {
       }
     }
   }
-  return 'Uncategorized';
+  return 'Financial';
 }
 
 function normalizeDate(raw) {
@@ -396,117 +298,27 @@ function normalizeDate(raw) {
   return new Date().toISOString().split('T')[0];
 }
 
-function formatDate(dateStr, format) {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return dateStr;
-  
-  const [yyyy, mm, dd] = parts;
-  switch (format) {
-    case 'MM/DD/YYYY':
-      return `${mm}/${dd}/${yyyy}`;
-    case 'DD/MM/YYYY':
-      return `${dd}/${mm}/${yyyy}`;
-    case 'YYYY-MM-DD':
-    default:
-      return dateStr;
-  }
-}
-
-// Helper for Date Presets
-function applyDatePreset(preset) {
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-
-  if (preset === 'all') {
-    startDateInput.value = '';
-    endDateInput.value = '';
-    return;
-  }
-
-  const now = new Date();
-  let start = new Date();
-  let end = new Date();
-
-  switch (preset) {
-    case 'this-month':
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      break;
-    case 'last-month':
-      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      end = new Date(now.getFullYear(), now.getMonth(), 0);
-      break;
-    case 'this-year':
-      start = new Date(now.getFullYear(), 0, 1);
-      end = new Date(now.getFullYear(), 11, 31);
-      break;
-    case 'last-30':
-      start = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
-      end = now;
-      break;
-    case 'last-90':
-      start = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
-      end = now;
-      break;
-  }
-
-  startDateInput.value = start.toISOString().split('T')[0];
-  endDateInput.value = end.toISOString().split('T')[0];
-}
-
-// Filter transactions by query & date range
-function getFilteredTransactions(filterQuery = '') {
-  const startDateVal = document.getElementById('startDate') ? document.getElementById('startDate').value : '';
-  const endDateVal = document.getElementById('endDate') ? document.getElementById('endDate').value : '';
-
-  return transactions.filter(t => {
-    // Text search query
-    if (filterQuery) {
-      const matchText = t.merchant.toLowerCase().includes(filterQuery) ||
-                        t.description.toLowerCase().includes(filterQuery) ||
-                        t.category.toLowerCase().includes(filterQuery) ||
-                        t.account.toLowerCase().includes(filterQuery) ||
-                        t.date.includes(filterQuery);
-      if (!matchText) return false;
-    }
-
-    // Date range filtering
-    if (startDateVal && t.date < startDateVal) return false;
-    if (endDateVal && t.date > endDateVal) return false;
-
-    return true;
-  });
-}
-
-// Render Transactions Table for Origin Template
-function renderTable(filterQuery = '') {
+function renderTable() {
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = '';
 
-  const dateFormatSetting = document.getElementById('dateFormat').value;
+  document.getElementById('txCount').textContent = `${transactions.length} transactions`;
 
-  const filtered = getFilteredTransactions(filterQuery);
-
-  document.getElementById('txCount').textContent = `${filtered.length} transactions`;
-
-  if (filtered.length === 0) {
+  if (transactions.length === 0) {
     tbody.innerHTML = `
       <tr class="empty-state">
-        <td colspan="8">
+        <td colspan="10">
           <div class="empty-message">
-            <i class="fa-solid fa-filter"></i>
-            <p>No transactions found matching the selected date range or search filter.</p>
+            <i class="fa-solid fa-folder-open"></i>
+            <p>Select your CSV file to convert it into Origin format.</p>
           </div>
         </td>
       </tr>`;
-    updateSummary([]);
     return;
   }
 
-  filtered.forEach(t => {
+  transactions.forEach(t => {
     const tr = document.createElement('tr');
-    const displayAmount = (t.amount >= 0 ? '+' : '') + '$' + Math.abs(t.amount).toFixed(2);
     const amountColorClass = t.amount < 0 ? 'text-danger' : 'text-success';
 
     tr.innerHTML = `
@@ -529,7 +341,13 @@ function renderTable(filterQuery = '') {
         <input type="text" class="cell-input" value="${escapeHtml(t.description)}" data-field="description" data-id="${t.id}">
       </td>
       <td>
+        <input type="text" class="cell-input" value="${escapeHtml(t.notes)}" data-field="notes" data-id="${t.id}">
+      </td>
+      <td>
         <input type="number" step="0.01" class="cell-input mono ${amountColorClass}" value="${t.amount}" data-field="amount" data-id="${t.id}">
+      </td>
+      <td>
+        <input type="text" class="cell-input" value="${escapeHtml(t.tags)}" data-field="tags" data-id="${t.id}">
       </td>
       <td>
         <button class="btn-icon btn-delete" data-id="${t.id}" title="Delete Row">
@@ -555,7 +373,7 @@ function renderTable(filterQuery = '') {
         } else {
           tx[field] = val;
         }
-        renderTable(filterQuery);
+        renderTable();
       }
     });
   });
@@ -565,100 +383,59 @@ function renderTable(filterQuery = '') {
       const id = e.target.getAttribute('data-id');
       const tx = transactions.find(item => item.id === id);
       if (tx) tx.selected = e.target.checked;
-      updateSummary(filtered);
     });
   });
 
   tbody.querySelectorAll('.btn-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
       transactions = transactions.filter(t => t.id !== id);
-      renderTable(filterQuery);
+      renderTable();
     });
   });
-
-  updateSummary(filtered);
 }
 
-function updateSummary(list) {
-  let debits = 0;
-  let credits = 0;
-
-  list.forEach(t => {
-    if (t.selected) {
-      if (t.amount < 0) debits += Math.abs(t.amount);
-      else credits += t.amount;
-    }
-  });
-
-  const net = credits - debits;
-
-  document.getElementById('sumDebits').textContent = '-$' + debits.toFixed(2);
-  document.getElementById('sumCredits').textContent = '+$' + credits.toFixed(2);
-  
-  const netEl = document.getElementById('netBalance');
-  netEl.textContent = (net >= 0 ? '+' : '-') + '$' + Math.abs(net).toFixed(2);
-  netEl.className = 'stat-value ' + (net >= 0 ? 'text-success' : 'text-danger');
-}
-
-// Export strictly in Origin Template Format for currently filtered date range & selected rows:
+// Export strictly matching origin-transaction-template.csv
+// Header: Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)
 function exportToOriginCSV() {
-  const query = document.getElementById('tableSearch') ? document.getElementById('tableSearch').value.toLowerCase() : '';
-  const filteredList = getFilteredTransactions(query);
-  const selectedTx = filteredList.filter(t => t.selected);
-
+  const selectedTx = transactions.filter(t => t.selected);
   if (selectedTx.length === 0) {
-    alert('No transactions selected within the chosen date range to export!');
+    alert('Please select at least one transaction to export!');
     return;
   }
 
-  const delimiter = document.getElementById('csvDelimiter').value || ';';
-  const dateFormat = document.getElementById('dateFormat').value || 'YYYY-MM-DD';
-
   let csvRows = [];
-
-  // Header
-  csvRows.push(['Transaction Date', 'Merchant', 'Category (optional)', 'Account', 'Description', 'Notes (optional)', 'Amount', 'Tags (optional)'].join(delimiter));
+  csvRows.push('Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)');
 
   selectedTx.forEach(t => {
-    const formattedDate = formatDate(t.date, dateFormat);
-    const merchant = `"${(t.merchant || '').replace(/"/g, '""')}"`;
-    const category = `"${(t.category || '').replace(/"/g, '""')}"`;
-    const account = `"${(t.account || 'My Bank').replace(/"/g, '""')}"`;
-    const description = `"${(t.description || '').replace(/"/g, '""')}"`;
-    const notes = `"${(t.notes || '').replace(/"/g, '""')}"`;
+    const formattedDate = t.date; // YYYY-MM-DD
+    const merchant = (t.merchant || '').replace(/"/g, '""');
+    const category = (t.category || '').replace(/"/g, '""');
+    const account = (t.account || 'My Bank').replace(/"/g, '""');
+    const description = (t.description || '').replace(/"/g, '""');
+    const notes = (t.notes || '').replace(/"/g, '""');
     const amount = t.amount.toFixed(2);
-    const tags = `"${(t.tags || '').replace(/"/g, '""')}"`;
+    const tags = (t.tags || '').replace(/"/g, '""');
 
-    csvRows.push([formattedDate, merchant, category, account, description, notes, amount, tags].join(delimiter));
+    csvRows.push(`${formattedDate};${merchant};${category};${account};${description};${notes};${amount};${tags}`);
   });
-
-  const startDateVal = document.getElementById('startDate').value;
-  const endDateVal = document.getElementById('endDate').value;
-  let dateTag = 'all_dates';
-  if (startDateVal || endDateVal) {
-    dateTag = `${startDateVal || 'start'}_to_${endDateVal || 'end'}`;
-  }
 
   const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvRows.join('\n'));
   const link = document.createElement('a');
   link.setAttribute('href', csvContent);
-  link.setAttribute('download', `origin_transactions_${dateTag}.csv`);
+  link.setAttribute('download', `origin-transaction-template.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 
-  showStatus(`Exported ${selectedTx.length} transactions (${dateTag}) to Origin CSV!`, 'success');
+  showStatus(`Exported ${selectedTx.length} transactions strictly as origin-transaction-template.csv!`, 'success');
 }
 
 function loadSampleData() {
   const sampleCSV = `Date,Description,Amount
-08/01/2026,WALMART GROCERY STORE #142,-124.50
-08/02/2026,TECH CORP PAYROLL DIRECT DEPOSIT,3250.00
-08/03/2026,STARBUCKS COFFEE,-5.75
-08/04/2026,NETFLIX MONTHLY SUBSCRIPTION,-15.99
-08/05/2026,SHELL GAS STATION,-45.00
-08/06/2026,ORIGIN SUBSCRIPTION,-12.99`;
+2024-12-21,Origin Subscription,-12.99
+2024-12-22,Target Grocery Store,-45.20
+2024-12-23,Payroll Direct Deposit,2500.00`;
   
   parseCSVFile(sampleCSV);
 }
