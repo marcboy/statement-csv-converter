@@ -1,12 +1,12 @@
-// StatementFlow - Streamlined Origin CSV Converter
-// Strict output matching origin-transaction-template.csv:
-// Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)
+// StatementFlow - Origin CSV Formatter Engine v2.0
+// Output Schema: Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)
 
 if (window.pdfjsLib) {
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
 let transactions = [];
+let currentFileName = '';
 
 const categoryRules = [
   { category: 'Groceries', keywords: ['walmart', 'target', 'kroger', 'trader joe', 'whole foods', 'safeway', 'aldi', 'grocery', 'supermarket', 'costco'] },
@@ -20,38 +20,26 @@ const categoryRules = [
 
 document.addEventListener('DOMContentLoaded', () => {
   setupEvents();
-  startPacificClock();
 });
 
-function startPacificClock() {
-  const timeEl = document.getElementById('pacificTimestamp');
-  const updateClock = () => {
-    if (timeEl) {
-      const options = {
-        timeZone: 'America/Los_Angeles',
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZoneName: 'short'
-      };
-      timeEl.textContent = new Date().toLocaleString('en-US', options);
-    }
-  };
-  updateClock();
-  setInterval(updateClock, 1000);
-}
-
 function setupEvents() {
-  const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
   const btnExportCSV = document.getElementById('btnExportCSV');
   const btnSampleData = document.getElementById('btnSampleData');
   const selectAll = document.getElementById('selectAll');
   const defaultAccountInput = document.getElementById('defaultAccount');
-  
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  const datePresetSelect = document.getElementById('datePreset');
+
+  // Input file change event
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFile(e.target.files[0]);
+    }
+  });
+
+  // Account Name Change
   defaultAccountInput.addEventListener('input', () => {
     const defaultAcc = defaultAccountInput.value || 'My Bank';
     transactions.forEach(t => {
@@ -60,39 +48,12 @@ function setupEvents() {
     renderTable();
   });
 
-  // Drag & Drop
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('dragover');
-  });
-
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('dragover');
-  });
-
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFile(e.dataTransfer.files[0]);
-    }
-  });
-
-  fileInput.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
-    }
-  });
-
-  // Date Range Controls
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-  const datePresetSelect = document.getElementById('datePreset');
-
-  if (startDateInput) startDateInput.addEventListener('change', () => { datePresetSelect.value = 'custom'; renderTable(); });
-  if (endDateInput) endDateInput.addEventListener('change', () => { datePresetSelect.value = 'custom'; renderTable(); });
+  // Date Range Listeners
+  if (startDateInput) startDateInput.addEventListener('change', () => { if (datePresetSelect) datePresetSelect.value = 'custom'; renderTable(); });
+  if (endDateInput) endDateInput.addEventListener('change', () => { if (datePresetSelect) datePresetSelect.value = 'custom'; renderTable(); });
   if (datePresetSelect) datePresetSelect.addEventListener('change', (e) => { applyDatePreset(e.target.value); renderTable(); });
 
+  // Buttons
   btnExportCSV.addEventListener('click', exportToOriginCSV);
   btnSampleData.addEventListener('click', loadSampleData);
 
@@ -105,6 +66,7 @@ function setupEvents() {
 
 function showStatus(msg, type = 'success') {
   const statusEl = document.getElementById('parserStatus');
+  if (!statusEl) return;
   if (type === 'error') {
     statusEl.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${msg}`;
     statusEl.style.color = 'var(--danger)';
@@ -115,41 +77,43 @@ function showStatus(msg, type = 'success') {
 }
 
 function displaySelectedFileName(fileName) {
-  const bannerEl = document.getElementById('selectedFileBanner');
-  const nameEl = document.getElementById('selectedFileNameDisplay');
-  if (nameEl) {
-    nameEl.textContent = fileName;
-  }
-  if (bannerEl) {
-    bannerEl.style.display = 'flex';
+  currentFileName = fileName;
+  const fileNameText = document.getElementById('fileNameText');
+  if (fileNameText) {
+    fileNameText.textContent = fileName;
+    fileNameText.style.color = '#06b6d4';
   }
 }
 
 async function handleFile(file) {
   displaySelectedFileName(file.name);
-  showStatus(`Processing: ${file.name}...`, 'success');
-  if (file.name.endsWith('.csv') || file.type === 'text/csv') {
-    const text = await file.text();
-    parseCSVFile(text);
-  } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-    await parsePDFFile(file);
-  } else {
-    const text = await file.text();
-    parseRawText(text);
+  showStatus(`Loaded: ${file.name}`, 'success');
+
+  try {
+    if (file.name.endsWith('.csv') || file.type === 'text/csv' || file.name.endsWith('.txt')) {
+      const text = await file.text();
+      parseCSVFile(text);
+    } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      await parsePDFFile(file);
+    } else {
+      const text = await file.text();
+      parseRawText(text);
+    }
+  } catch (err) {
+    console.error(err);
+    showStatus('Error reading file contents', 'error');
   }
 }
 
 function parseCSVFile(csvText) {
   if (!csvText || !csvText.trim()) {
-    showStatus('The selected file is empty.', 'error');
+    showStatus('Selected file is empty', 'error');
     return;
   }
 
-  // Detect line ending & split
   const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
   if (lines.length === 0) return;
 
-  // Auto detect delimiter (; vs , vs \t vs |)
   const firstLine = lines[0];
   let delimiter = ',';
   if (firstLine.includes(';') && (firstLine.split(';').length >= firstLine.split(',').length)) {
@@ -158,7 +122,6 @@ function parseCSVFile(csvText) {
     delimiter = '\t';
   }
 
-  // Robust CSV row splitter accounting for quotes & escaped quotes
   const splitCSVRow = (line) => {
     const result = [];
     let current = '';
@@ -168,7 +131,7 @@ function parseCSVFile(csvText) {
       if (char === '"') {
         if (inQuotes && line[i + 1] === '"') {
           current += '"';
-          i++; // skip escaped quote
+          i++;
         } else {
           inQuotes = !inQuotes;
         }
@@ -185,7 +148,6 @@ function parseCSVFile(csvText) {
 
   const headers = splitCSVRow(lines[0]).map(h => h.toLowerCase());
   
-  // Header matching
   let dateIdx = headers.findIndex(h => h.includes('date') || h.includes('time') || h.includes('day'));
   let merchantIdx = headers.findIndex(h => h.includes('merchant') || h.includes('payee') || h.includes('vendor'));
   let descIdx = headers.findIndex(h => h.includes('description') || h.includes('title') || h.includes('name') || h.includes('memo') || h.includes('item') || h.includes('details') || h.includes('action'));
@@ -198,15 +160,12 @@ function parseCSVFile(csvText) {
   const parsed = [];
   const defaultAcc = document.getElementById('defaultAccount') ? (document.getElementById('defaultAccount').value || 'My Bank') : 'My Bank';
 
-  // Process rows
   for (let i = 1; i < lines.length; i++) {
     const cols = splitCSVRow(lines[i]);
     if (cols.length < 1 || (cols.length === 1 && !cols[0])) continue;
 
-    // Date extraction
     let rawDate = dateIdx >= 0 && cols[dateIdx] ? cols[dateIdx] : '';
     if (!rawDate) {
-      // Find first column matching date regex
       for (const col of cols) {
         if (col && /\d{1,4}[\/\.-]\d{1,4}/.test(col)) {
           rawDate = col;
@@ -217,7 +176,6 @@ function parseCSVFile(csvText) {
     if (!rawDate) rawDate = new Date().toISOString().split('T')[0];
     const normalizedDate = normalizeDate(rawDate);
 
-    // Description & Merchant extraction
     const rawDesc = descIdx >= 0 && cols[descIdx] ? cols[descIdx] : (cols[1] || cols[0] || 'Transaction');
     const merchant = merchantIdx >= 0 && cols[merchantIdx] ? cols[merchantIdx] : extractMerchantName(rawDesc);
     const category = catIdx >= 0 && cols[catIdx] ? cols[catIdx] : autoCategorizeText(rawDesc);
@@ -225,13 +183,11 @@ function parseCSVFile(csvText) {
     const notes = notesIdx >= 0 && cols[notesIdx] ? cols[notesIdx] : '';
     const tags = tagsIdx >= 0 && cols[tagsIdx] ? cols[tagsIdx] : '';
 
-    // Amount extraction
     let amount = 0;
     if (amountIdx >= 0 && cols[amountIdx] !== undefined && cols[amountIdx] !== '') {
       const parsedNum = parseFloat(cols[amountIdx].replace(/[\$\s,]/g, ''));
       if (!isNaN(parsedNum)) amount = parsedNum;
     } else {
-      // Scan columns for numeric currency value
       for (let c = cols.length - 1; c >= 0; c--) {
         const col = cols[c];
         if (col && /^-?\$?\s*\d+(?:\.\d+)?$/.test(col.replace(/,/g, ''))) {
@@ -261,7 +217,7 @@ function parseCSVFile(csvText) {
   if (parsed.length > 0) {
     transactions = parsed;
     renderTable();
-    showStatus(`Parsed ${parsed.length} rows into Origin format!`, 'success');
+    showStatus(`Parsed ${parsed.length} rows successfully`, 'success');
   } else {
     parseRawText(csvText);
   }
@@ -295,14 +251,14 @@ async function parsePDFFile(file) {
     parseRawText(fullText);
   } catch (err) {
     console.error('PDF error:', err);
-    showStatus('Error reading PDF file.', 'error');
+    showStatus('Error reading PDF file', 'error');
   }
 }
 
 function parseRawText(text) {
   const lines = text.split(/\r?\n/);
   const parsed = [];
-  const defaultAcc = document.getElementById('defaultAccount').value || 'My Bank';
+  const defaultAcc = document.getElementById('defaultAccount') ? (document.getElementById('defaultAccount').value || 'My Bank') : 'My Bank';
   const dateRegex = /\b(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}|\d{4}[\/\.-]\d{1,2}[\/\.-]\d{1,2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}(?:,\s*\d{2,4})?)\b/i;
 
   for (let line of lines) {
@@ -349,7 +305,7 @@ function parseRawText(text) {
   if (parsed.length > 0) {
     transactions = parsed;
     renderTable();
-    showStatus(`Extracted ${parsed.length} rows into Origin format!`, 'success');
+    showStatus(`Extracted ${parsed.length} transactions`, 'success');
   }
 }
 
@@ -436,18 +392,20 @@ function getFilteredTransactions() {
 
 function renderTable() {
   const tbody = document.getElementById('tableBody');
+  if (!tbody) return;
   tbody.innerHTML = '';
 
   const filtered = getFilteredTransactions();
-  document.getElementById('txCount').textContent = `${filtered.length} transactions`;
+  const txCount = document.getElementById('txCount');
+  if (txCount) txCount.textContent = `${filtered.length} transactions`;
 
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr class="empty-state">
         <td colspan="10">
           <div class="empty-message">
-            <i class="fa-solid fa-folder-open"></i>
-            <p>No transactions found matching the selected date range filter.</p>
+            <i class="fa-solid fa-filter"></i>
+            <p>No transactions match the selected filters or file.</p>
           </div>
         </td>
       </tr>`;
@@ -532,7 +490,7 @@ function renderTable() {
   });
 }
 
-// Export strictly matching origin-transaction-template.csv (filtered by date range)
+// Export strictly matching origin-transaction-template.csv
 function exportToOriginCSV() {
   if (!transactions || transactions.length === 0) {
     alert('Please select or upload a CSV file first before exporting!');
@@ -543,7 +501,7 @@ function exportToOriginCSV() {
   const selectedTx = filtered.filter(t => t.selected !== false);
   
   if (selectedTx.length === 0) {
-    alert('No transactions match the current date filter or selection!');
+    alert('No transactions match the current date filter!');
     return;
   }
 
@@ -578,14 +536,18 @@ function exportToOriginCSV() {
     URL.revokeObjectURL(url);
   }, 100);
 
-  showStatus(`Exported ${selectedTx.length} transactions to origin-transaction-template.csv!`, 'success');
+  showStatus(`Exported ${selectedTx.length} rows to Origin format!`, 'success');
 }
 
 function loadSampleData() {
+  displaySelectedFileName('demo-sample-statement.csv');
   const sampleCSV = `Date,Description,Amount
-2024-12-21,Origin Subscription,-12.99
-2024-12-22,Target Grocery Store,-45.20
-2024-12-23,Payroll Direct Deposit,2500.00`;
+2026-08-01,WALMART GROCERY STORE #142,-124.50
+2026-08-02,TECH CORP PAYROLL DIRECT DEPOSIT,3250.00
+2026-08-03,STARBUCKS COFFEE,-5.75
+2026-08-04,NETFLIX MONTHLY SUBSCRIPTION,-15.99
+2026-08-05,SHELL GAS STATION,-45.00
+2026-08-06,ORIGIN SUBSCRIPTION,-12.99`;
   
   parseCSVFile(sampleCSV);
 }

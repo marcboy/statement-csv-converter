@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Statement Converter - Origin CSV Format</title>
-  <meta name="description" content="Convert your CSV or PDF bank statement directly into the Origin template format.">
+  <title>Origin Statement CSV Formatter v2.0</title>
+  <meta name="description" content="Compact, fast statement to Origin CSV converter.">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   
   <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -20,139 +20,114 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="logo-area">
-        <div class="logo-icon"><i class="fa-solid fa-file-csv"></i></div>
-        <div class="logo-text">
-          <h1>Origin <span>CSV Converter</span></h1>
-          <span class="badge">v1.8.0</span>
-        </div>
+  <div class="compact-container">
+    <!-- Header bar with Title & Version -->
+    <header class="compact-header">
+      <div class="brand">
+        <i class="fa-solid fa-file-csv brand-icon"></i>
+        <h1>Origin <span>CSV Formatter</span></h1>
+        <span class="v-tag">v2.0</span>
       </div>
-      <div class="header-actions">
-        <button id="btnSampleData" class="btn btn-outline">
-          <i class="fa-solid fa-flask"></i> Load Demo CSV
-        </button>
+      <div class="status-box" id="parserStatus">
+        <i class="fa-solid fa-circle-check"></i> Ready
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="app-main">
-      <!-- Direct Upload Section -->
-      <section class="card input-card">
-        <label for="fileInput" class="drop-zone" id="dropZone" style="cursor: pointer; display: block;">
-          <div class="drop-zone-icon">
-            <i class="fa-solid fa-cloud-arrow-up"></i>
-          </div>
-          <h3 class="drop-zone-title" style="margin-bottom: 0.5rem;">Click anywhere here to select your CSV file</h3>
-          <p class="drop-zone-sub" style="margin-bottom: 1.25rem;">Or drag & drop your statement file directly</p>
-          <span class="btn btn-primary btn-lg">
-            <i class="fa-solid fa-folder-open"></i> Choose Statement CSV
-          </span>
-          <input type="file" id="fileInput" accept=".csv,.txt,.log,.pdf,text/csv,text/plain,application/vnd.ms-excel" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">
+    <!-- Toolbar Card (File Select, Account Name, Date Range, Export) -->
+    <section class="compact-toolbar card">
+      <!-- File Selector Button & Active File Name Display -->
+      <div class="tool-item file-selector-wrapper">
+        <label for="fileInput" class="btn btn-primary">
+          <i class="fa-solid fa-folder-open"></i> Select CSV File
         </label>
-        
-        <!-- Selected File Name Display Banner -->
-        <div id="selectedFileBanner" class="selected-file-banner" style="display: none; margin-top: 1.5rem;">
-          <div class="file-banner-icon"><i class="fa-solid fa-file-csv"></i></div>
-          <div class="file-banner-details">
-            <span class="file-banner-label">Active Loaded File:</span>
-            <strong id="selectedFileNameDisplay" class="file-banner-name">None</strong>
-          </div>
-          <span class="file-banner-status"><i class="fa-solid fa-circle-check"></i> Loaded</span>
+        <input type="file" id="fileInput" accept=".csv,.txt,.log,.pdf,text/csv,text/plain,application/vnd.ms-excel">
+        <div id="fileDisplayBadge" class="file-badge">
+          <i class="fa-solid fa-file-csv"></i> <span id="fileNameText">No file selected</span>
         </div>
-      </section>
+      </div>
 
-      <!-- Account & Date Range Settings Card -->
-      <section class="card config-card">
-        <div class="card-header">
-          <h2><i class="fa-solid fa-sliders"></i> Export Settings & Date Filter</h2>
-          <span class="status-indicator" id="parserStatus"><i class="fa-solid fa-circle-check"></i> Ready</span>
+      <!-- Settings & Controls -->
+      <div class="tool-item">
+        <label for="defaultAccount">Account Name</label>
+        <input type="text" id="defaultAccount" class="form-control" value="My Bank" placeholder="Account Name">
+      </div>
+
+      <div class="tool-item">
+        <label for="startDate">Start Date</label>
+        <input type="date" id="startDate" class="form-control">
+      </div>
+
+      <div class="tool-item">
+        <label for="endDate">End Date</label>
+        <input type="date" id="endDate" class="form-control">
+      </div>
+
+      <div class="tool-item">
+        <label for="datePreset">Preset</label>
+        <select id="datePreset" class="form-control">
+          <option value="all">All Dates</option>
+          <option value="this-month">This Month</option>
+          <option value="last-month">Last Month</option>
+          <option value="this-year">This Year</option>
+          <option value="last-30">Last 30 Days</option>
+          <option value="last-90">Last 90 Days</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="tool-item actions-item">
+        <button id="btnExportCSV" class="btn btn-success">
+          <i class="fa-solid fa-download"></i> Export Origin CSV
+        </button>
+        <button id="btnSampleData" class="btn btn-outline" title="Load Demo Sample Data">
+          <i class="fa-solid fa-flask"></i> Demo
+        </button>
+      </div>
+    </section>
+
+    <!-- Transactions Data Table Card -->
+    <section class="card table-card">
+      <div class="table-header">
+        <div class="table-title">
+          <h2>Extracted Output</h2>
+          <span class="count-badge" id="txCount">0 transactions</span>
         </div>
-        <div class="config-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-          <div class="form-group">
-            <label for="defaultAccount">Account Name (fills Account column)</label>
-            <input type="text" id="defaultAccount" class="form-control" value="My Bank" placeholder="e.g., My Bank, Amex, Chase">
-          </div>
+      </div>
 
-          <div class="form-group">
-            <label for="startDate"><i class="fa-regular fa-calendar-minus"></i> Filter Start Date</label>
-            <input type="date" id="startDate" class="form-control">
-          </div>
+      <div class="table-responsive">
+        <table class="data-table" id="dataTable">
+          <thead>
+            <tr>
+              <th width="40"><input type="checkbox" id="selectAll" checked></th>
+              <th>Transaction Date</th>
+              <th>Merchant</th>
+              <th>Category</th>
+              <th>Account</th>
+              <th>Description</th>
+              <th>Notes</th>
+              <th>Amount</th>
+              <th>Tags</th>
+              <th width="40"></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr class="empty-state">
+              <td colspan="10">
+                <div class="empty-message">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p>Click <strong>Select CSV File</strong> above to load and transform your statement into Origin format.</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-          <div class="form-group">
-            <label for="endDate"><i class="fa-regular fa-calendar-plus"></i> Filter End Date</label>
-            <input type="date" id="endDate" class="form-control">
-          </div>
-
-          <div class="form-group">
-            <label for="datePreset"><i class="fa-solid fa-filter"></i> Date Preset Quick Select</label>
-            <select id="datePreset" class="form-control">
-              <option value="all">All Dates</option>
-              <option value="this-month">This Month</option>
-              <option value="last-month">Last Month</option>
-              <option value="this-year">This Year (2026)</option>
-              <option value="last-30">Last 30 Days</option>
-              <option value="last-90">Last 90 Days</option>
-              <option value="custom">Custom Range</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <!-- Data Preview & Export Table -->
-      <section class="card table-card">
-        <div class="table-header">
-          <div class="table-title">
-            <h2><i class="fa-solid fa-table"></i> Origin Transformed Output</h2>
-            <span class="count-badge" id="txCount">0 transactions</span>
-          </div>
-          <div class="table-actions">
-            <button id="btnExportCSV" class="btn btn-success btn-lg">
-              <i class="fa-solid fa-download"></i> Export Origin CSV
-            </button>
-          </div>
-        </div>
-
-        <div class="table-responsive">
-          <table class="data-table" id="dataTable">
-            <thead>
-              <tr>
-                <th width="40"><input type="checkbox" id="selectAll" checked></th>
-                <th>Transaction Date</th>
-                <th>Merchant</th>
-                <th>Category (optional)</th>
-                <th>Account</th>
-                <th>Description</th>
-                <th>Notes (optional)</th>
-                <th>Amount</th>
-                <th>Tags (optional)</th>
-                <th width="50"></th>
-              </tr>
-            </thead>
-            <tbody id="tableBody">
-              <tr class="empty-state">
-                <td colspan="10">
-                  <div class="empty-message">
-                    <i class="fa-solid fa-folder-open"></i>
-                    <p>Select a statement CSV file above to instantly format it into the Origin template!</p>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
-
-    <footer class="app-footer">
-      <p>
-        Origin Transaction Template CSV Formatter &bull; 
-        <strong style="color: var(--accent);">v1.8.0</strong> &bull; 
-        Built: <span style="font-family: var(--font-mono); font-weight: 600; color: #f59e0b;">2026-08-10 12:43:30 PDT</span> &bull; 
-        Pacific Time (US & Canada): <span id="pacificTimestamp" style="font-family: var(--font-mono); font-weight: 600; color: #10b981;">Loading time...</span>
-      </p>
+    <!-- Footer -->
+    <footer class="compact-footer">
+      <span>Origin Template Converter &bull; v2.0 &bull; Built: 2026-08-10 12:45:00 PDT</span>
     </footer>
   </div>
 
