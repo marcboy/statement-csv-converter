@@ -149,12 +149,25 @@ async function handleFile(file) {
 }
 
 function parseCSVFile(csvText) {
-  const lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+  if (!csvText || !csvText.trim()) {
+    showStatus('The selected file is empty.', 'error');
+    return;
+  }
+
+  // Detect line ending & split
+  const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
   if (lines.length === 0) return;
 
+  // Auto detect delimiter (; vs , vs \t vs |)
   const firstLine = lines[0];
-  const delimiter = firstLine.includes(';') ? ';' : ',';
-  
+  let delimiter = ',';
+  if (firstLine.includes(';') && (firstLine.split(';').length >= firstLine.split(',').length)) {
+    delimiter = ';';
+  } else if (firstLine.includes('\t')) {
+    delimiter = '\t';
+  }
+
+  // Robust CSV row splitter accounting for quotes & escaped quotes
   const splitCSVRow = (line) => {
     const result = [];
     let current = '';
@@ -162,7 +175,12 @@ function parseCSVFile(csvText) {
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
       if (char === '"') {
-        inQuotes = !inQuotes;
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++; // skip escaped quote
+        } else {
+          inQuotes = !inQuotes;
+        }
       } else if (char === delimiter && !inQuotes) {
         result.push(current.trim().replace(/^"|"$/g, ''));
         current = '';
@@ -176,39 +194,61 @@ function parseCSVFile(csvText) {
 
   const headers = splitCSVRow(lines[0]).map(h => h.toLowerCase());
   
-  let dateIdx = headers.findIndex(h => h.includes('date'));
-  let descIdx = headers.findIndex(h => h.includes('description') || h.includes('payee') || h.includes('name') || h.includes('title') || h.includes('transaction'));
-  let merchantIdx = headers.findIndex(h => h.includes('merchant'));
-  let amountIdx = headers.findIndex(h => h.includes('amount') || h.includes('total') || h.includes('debit') || h.includes('value'));
-  let catIdx = headers.findIndex(h => h.includes('category'));
+  // Header matching
+  let dateIdx = headers.findIndex(h => h.includes('date') || h.includes('time') || h.includes('day'));
+  let merchantIdx = headers.findIndex(h => h.includes('merchant') || h.includes('payee') || h.includes('vendor'));
+  let descIdx = headers.findIndex(h => h.includes('description') || h.includes('title') || h.includes('name') || h.includes('memo') || h.includes('item') || h.includes('details') || h.includes('action'));
+  let amountIdx = headers.findIndex(h => h.includes('amount') || h.includes('total') || h.includes('price') || h.includes('cost') || h.includes('debit') || h.includes('value'));
+  let catIdx = headers.findIndex(h => h.includes('category') || h.includes('type'));
   let accountIdx = headers.findIndex(h => h.includes('account'));
-  let notesIdx = headers.findIndex(h => h.includes('notes') || h.includes('memo'));
+  let notesIdx = headers.findIndex(h => h.includes('notes') || h.includes('memo') || h.includes('comment'));
+  let tagsIdx = headers.findIndex(h => h.includes('tags') || h.includes('labels'));
 
   const parsed = [];
-  const defaultAcc = document.getElementById('defaultAccount').value || 'My Bank';
+  const defaultAcc = document.getElementById('defaultAccount') ? (document.getElementById('defaultAccount').value || 'My Bank') : 'My Bank';
 
+  // Process rows
   for (let i = 1; i < lines.length; i++) {
     const cols = splitCSVRow(lines[i]);
-    if (cols.length < 2) continue;
+    if (cols.length < 1 || (cols.length === 1 && !cols[0])) continue;
 
-    const rawDate = dateIdx >= 0 && cols[dateIdx] ? cols[dateIdx] : new Date().toISOString().split('T')[0];
+    // Date extraction
+    let rawDate = dateIdx >= 0 && cols[dateIdx] ? cols[dateIdx] : '';
+    if (!rawDate) {
+      // Find first column matching date regex
+      for (const col of cols) {
+        if (col && /\d{1,4}[\/\.-]\d{1,4}/.test(col)) {
+          rawDate = col;
+          break;
+        }
+      }
+    }
+    if (!rawDate) rawDate = new Date().toISOString().split('T')[0];
     const normalizedDate = normalizeDate(rawDate);
 
-    const rawDesc = descIdx >= 0 && cols[descIdx] ? cols[descIdx] : (cols[1] || 'Transaction');
+    // Description & Merchant extraction
+    const rawDesc = descIdx >= 0 && cols[descIdx] ? cols[descIdx] : (cols[1] || cols[0] || 'Transaction');
     const merchant = merchantIdx >= 0 && cols[merchantIdx] ? cols[merchantIdx] : extractMerchantName(rawDesc);
     const category = catIdx >= 0 && cols[catIdx] ? cols[catIdx] : autoCategorizeText(rawDesc);
     const account = accountIdx >= 0 && cols[accountIdx] ? cols[accountIdx] : defaultAcc;
     const notes = notesIdx >= 0 && cols[notesIdx] ? cols[notesIdx] : '';
+    const tags = tagsIdx >= 0 && cols[tagsIdx] ? cols[tagsIdx] : '';
 
+    // Amount extraction
     let amount = 0;
-    if (amountIdx >= 0 && cols[amountIdx]) {
-      amount = parseFloat(cols[amountIdx].replace(/[\$\s,]/g, '')) || 0;
+    if (amountIdx >= 0 && cols[amountIdx] !== undefined && cols[amountIdx] !== '') {
+      const parsedNum = parseFloat(cols[amountIdx].replace(/[\$\s,]/g, ''));
+      if (!isNaN(parsedNum)) amount = parsedNum;
     } else {
-      for (const col of cols) {
-        const parsedNum = parseFloat(col.replace(/[\$\s,]/g, ''));
-        if (!isNaN(parsedNum) && col.includes('.')) {
-          amount = parsedNum;
-          break;
+      // Scan columns for numeric currency value
+      for (let c = cols.length - 1; c >= 0; c--) {
+        const col = cols[c];
+        if (col && /^-?\$?\s*\d+(?:\.\d+)?$/.test(col.replace(/,/g, ''))) {
+          const parsedNum = parseFloat(col.replace(/[\$\s,]/g, ''));
+          if (!isNaN(parsedNum)) {
+            amount = parsedNum;
+            break;
+          }
         }
       }
     }
@@ -222,7 +262,7 @@ function parseCSVFile(csvText) {
       description: rawDesc,
       notes: notes,
       amount: amount,
-      tags: '',
+      tags: tags,
       selected: true
     });
   }
