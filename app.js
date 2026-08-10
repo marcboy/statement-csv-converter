@@ -20,7 +20,29 @@ const categoryRules = [
 
 document.addEventListener('DOMContentLoaded', () => {
   setupEvents();
+  startPacificClock();
 });
+
+function startPacificClock() {
+  const timeEl = document.getElementById('pacificTimestamp');
+  const updateClock = () => {
+    if (timeEl) {
+      const options = {
+        timeZone: 'America/Los_Angeles',
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+      };
+      timeEl.textContent = new Date().toLocaleString('en-US', options);
+    }
+  };
+  updateClock();
+  setInterval(updateClock, 1000);
+}
 
 function setupEvents() {
   const dropZone = document.getElementById('dropZone');
