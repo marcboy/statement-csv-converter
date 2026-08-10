@@ -335,10 +335,35 @@ function autoCategorizeText(desc) {
 }
 
 function normalizeDate(raw) {
+  if (!raw) return new Date().toISOString().split('T')[0];
   try {
-    const d = new Date(raw);
-    if (!isNaN(d.getTime())) {
-      return d.toISOString().split('T')[0];
+    const parts = raw.trim().split(/[\/\.-]/);
+    if (parts.length === 3) {
+      let m, d, y;
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD
+        y = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10);
+        d = parseInt(parts[2], 10);
+      } else {
+        // MM/DD/YYYY or M/D/YYYY
+        m = parseInt(parts[0], 10);
+        d = parseInt(parts[1], 10);
+        y = parseInt(parts[2], 10);
+        if (y < 100) y += 2000;
+      }
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d) && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+        const mm = String(m).padStart(2, '0');
+        const dd = String(d).padStart(2, '0');
+        return `${y}-${mm}-${dd}`;
+      }
+    }
+    const parsedDate = new Date(raw);
+    if (!isNaN(parsedDate.getTime())) {
+      const yyyy = parsedDate.getFullYear();
+      const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(parsedDate.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     }
   } catch (e) {}
   return new Date().toISOString().split('T')[0];
