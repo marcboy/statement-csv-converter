@@ -74,7 +74,7 @@
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
       <h2 style="margin-bottom: 0;">Origin CSV Formatter</h2>
-      <span style="background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid #06b6d4; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">v0.3</span>
+      <span style="background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid #06b6d4; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">v0.4</span>
     </div>
 
     <div class="form-group">
@@ -87,6 +87,17 @@
       <div id="fileNameDisplay" class="file-name">No file selected</div>
     </div>
 
+    <div style="display: flex; gap: 1rem; margin-top: 1.25rem;">
+      <div class="form-group" style="flex: 1; margin-bottom: 0;">
+        <label for="startDate">Start Date (Optional):</label>
+        <input type="date" id="startDate" style="width: 100%; background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.6rem; border-radius: 6px;">
+      </div>
+      <div class="form-group" style="flex: 1; margin-bottom: 0;">
+        <label for="endDate">End Date (Optional):</label>
+        <input type="date" id="endDate" style="width: 100%; background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.6rem; border-radius: 6px;">
+      </div>
+    </div>
+
     <div style="margin-top: 1.5rem;">
       <button id="btnExport" style="width: 100%; background: #10b981; color: #fff; border: none; padding: 0.75rem; border-radius: 6px; font-weight: 700; font-size: 1rem; cursor: pointer;">
         Export Origin Template CSV
@@ -94,7 +105,7 @@
     </div>
 
     <div style="margin-top: 1.5rem; text-align: center; font-size: 0.75rem; color: #64748b; font-family: monospace;">
-      Version <strong>v0.3</strong> &bull; Built: <span style="color: #f59e0b;">2026-08-10 13:15:15 PDT</span> (Pacific Time)
+      Version <strong>v0.4</strong> &bull; Built: <span style="color: #f59e0b;">2026-08-10 13:17:15 PDT</span> (Pacific Time)
     </div>
   </div>
 
@@ -200,6 +211,9 @@
       let descIdx = headers.findIndex(function(h) { return h.includes('desc') || h.includes('name') || h.includes('payee') || h.includes('title') || h.includes('merchant'); });
       let amtIdx = headers.findIndex(function(h) { return h.includes('amount') || h.includes('total') || h.includes('price') || h.includes('cost') || h.includes('val'); });
 
+      const startDateVal = document.getElementById('startDate').value;
+      const endDateVal = document.getElementById('endDate').value;
+
       // Origin CSV Header Schema with semicolon delimiter
       const originRows = ['Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)'];
 
@@ -209,6 +223,10 @@
 
         let rawDate = dateIdx >= 0 && cols[dateIdx] ? cols[dateIdx] : cols[0];
         let formattedDate = formatDate(rawDate);
+
+        // Date Range Filtering Check (Optional: if blank, row passes)
+        if (startDateVal && formattedDate < startDateVal) continue;
+        if (endDateVal && formattedDate > endDateVal) continue;
 
         let rawDesc = descIdx >= 0 && cols[descIdx] ? cols[descIdx] : (cols[1] || 'Transaction');
         let merchant = extractMerchant(rawDesc);
