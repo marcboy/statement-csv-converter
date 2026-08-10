@@ -32,10 +32,23 @@ function setupEvents() {
   const endDateInput = document.getElementById('endDate');
   const datePresetSelect = document.getElementById('datePreset');
 
+  const btnSelectFile = document.getElementById('btnSelectFile');
+
+  // Explicit Button click handler
+  if (btnSelectFile) {
+    btnSelectFile.addEventListener('click', (e) => {
+      e.preventDefault();
+      fileInput.value = ''; // reset so selecting same file fires change event
+      fileInput.click();
+    });
+  }
+
   // Input file change event
   fileInput.addEventListener('change', (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
+      const file = e.target.files[0];
+      displaySelectedFileName(file.name);
+      handleFile(file);
     }
   });
 
