@@ -548,6 +548,22 @@ body {
 .text-danger { color: var(--danger); }
 .text-success { color: var(--success); }
 
+.selected-file-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.selected-file-info i {
+  color: var(--accent);
+}
+
 .app-footer {
   text-align: center;
   font-size: 0.8rem;

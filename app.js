@@ -84,6 +84,15 @@ function setupEvents() {
     }
   });
 
+  // Date Range Controls
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  const datePresetSelect = document.getElementById('datePreset');
+
+  if (startDateInput) startDateInput.addEventListener('change', () => { datePresetSelect.value = 'custom'; renderTable(); });
+  if (endDateInput) endDateInput.addEventListener('change', () => { datePresetSelect.value = 'custom'; renderTable(); });
+  if (datePresetSelect) datePresetSelect.addEventListener('change', (e) => { applyDatePreset(e.target.value); renderTable(); });
+
   btnExportCSV.addEventListener('click', exportToOriginCSV);
   btnSampleData.addEventListener('click', loadSampleData);
 
@@ -105,7 +114,17 @@ function showStatus(msg, type = 'success') {
   }
 }
 
+function displaySelectedFileName(fileName) {
+  const infoEl = document.getElementById('selectedFileInfo');
+  const nameEl = document.getElementById('selectedFileName');
+  if (infoEl && nameEl) {
+    nameEl.textContent = fileName;
+    infoEl.style.display = 'inline-flex';
+  }
+}
+
 async function handleFile(file) {
+  displaySelectedFileName(file.name);
   showStatus(`Processing: ${file.name}...`, 'success');
   if (file.name.endsWith('.csv') || file.type === 'text/csv') {
     const text = await file.text();
@@ -320,26 +339,80 @@ function normalizeDate(raw) {
   return new Date().toISOString().split('T')[0];
 }
 
+function applyDatePreset(preset) {
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  if (!startDateInput || !endDateInput) return;
+
+  if (preset === 'all') {
+    startDateInput.value = '';
+    endDateInput.value = '';
+    return;
+  }
+
+  const now = new Date();
+  let start = new Date();
+  let end = new Date();
+
+  switch (preset) {
+    case 'this-month':
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      break;
+    case 'last-month':
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0);
+      break;
+    case 'this-year':
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31);
+      break;
+    case 'last-30':
+      start = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+      end = now;
+      break;
+    case 'last-90':
+      start = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
+      end = now;
+      break;
+  }
+
+  startDateInput.value = start.toISOString().split('T')[0];
+  endDateInput.value = end.toISOString().split('T')[0];
+}
+
+function getFilteredTransactions() {
+  const startDateVal = document.getElementById('startDate') ? document.getElementById('startDate').value : '';
+  const endDateVal = document.getElementById('endDate') ? document.getElementById('endDate').value : '';
+
+  return transactions.filter(t => {
+    if (startDateVal && t.date < startDateVal) return false;
+    if (endDateVal && t.date > endDateVal) return false;
+    return true;
+  });
+}
+
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = '';
 
-  document.getElementById('txCount').textContent = `${transactions.length} transactions`;
+  const filtered = getFilteredTransactions();
+  document.getElementById('txCount').textContent = `${filtered.length} transactions`;
 
-  if (transactions.length === 0) {
+  if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr class="empty-state">
         <td colspan="10">
           <div class="empty-message">
             <i class="fa-solid fa-folder-open"></i>
-            <p>Select your CSV file to convert it into Origin format.</p>
+            <p>No transactions found matching the selected date range filter.</p>
           </div>
         </td>
       </tr>`;
     return;
   }
 
-  transactions.forEach(t => {
+  filtered.forEach(t => {
     const tr = document.createElement('tr');
     const amountColorClass = t.amount < 0 ? 'text-danger' : 'text-success';
 
@@ -417,12 +490,12 @@ function renderTable() {
   });
 }
 
-// Export strictly matching origin-transaction-template.csv
-// Header: Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)
+// Export strictly matching origin-transaction-template.csv (filtered by date range)
 function exportToOriginCSV() {
-  const selectedTx = transactions.filter(t => t.selected);
+  const filtered = getFilteredTransactions();
+  const selectedTx = filtered.filter(t => t.selected);
   if (selectedTx.length === 0) {
-    alert('Please select at least one transaction to export!');
+    alert('No transactions selected within the chosen date range to export!');
     return;
   }
 
@@ -430,7 +503,7 @@ function exportToOriginCSV() {
   csvRows.push('Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)');
 
   selectedTx.forEach(t => {
-    const formattedDate = t.date; // YYYY-MM-DD
+    const formattedDate = t.date;
     const merchant = (t.merchant || '').replace(/"/g, '""');
     const category = (t.category || '').replace(/"/g, '""');
     const account = (t.account || 'My Bank').replace(/"/g, '""');
@@ -450,7 +523,7 @@ function exportToOriginCSV() {
   link.click();
   document.body.removeChild(link);
 
-  showStatus(`Exported ${selectedTx.length} transactions strictly as origin-transaction-template.csv!`, 'success');
+  showStatus(`Exported ${selectedTx.length} transactions to origin-transaction-template.csv!`, 'success');
 }
 
 function loadSampleData() {

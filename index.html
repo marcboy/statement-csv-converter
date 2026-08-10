@@ -51,19 +51,45 @@
             <i class="fa-solid fa-folder-open"></i> Select CSV File
           </label>
           <input type="file" id="fileInput" accept=".csv,.pdf,.txt,.log" class="hidden-input">
+          <div id="selectedFileInfo" class="selected-file-info" style="display: none; margin-top: 1rem;">
+            <i class="fa-solid fa-file-circle-check"></i> Selected File: <strong id="selectedFileName">None</strong>
+          </div>
         </div>
       </section>
 
-      <!-- Account Settings Card -->
+      <!-- Account & Date Range Settings Card -->
       <section class="card config-card">
         <div class="card-header">
-          <h2><i class="fa-solid fa-building-columns"></i> Account Setting</h2>
+          <h2><i class="fa-solid fa-sliders"></i> Export Settings & Date Filter</h2>
           <span class="status-indicator" id="parserStatus"><i class="fa-solid fa-circle-check"></i> Ready</span>
         </div>
-        <div class="config-grid" style="grid-template-columns: 1fr;">
+        <div class="config-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
           <div class="form-group">
             <label for="defaultAccount">Account Name (fills Account column)</label>
             <input type="text" id="defaultAccount" class="form-control" value="My Bank" placeholder="e.g., My Bank, Amex, Chase">
+          </div>
+
+          <div class="form-group">
+            <label for="startDate"><i class="fa-regular fa-calendar-minus"></i> Filter Start Date</label>
+            <input type="date" id="startDate" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label for="endDate"><i class="fa-regular fa-calendar-plus"></i> Filter End Date</label>
+            <input type="date" id="endDate" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label for="datePreset"><i class="fa-solid fa-filter"></i> Date Preset Quick Select</label>
+            <select id="datePreset" class="form-control">
+              <option value="all">All Dates</option>
+              <option value="this-month">This Month</option>
+              <option value="last-month">Last Month</option>
+              <option value="this-year">This Year (2026)</option>
+              <option value="last-30">Last 30 Days</option>
+              <option value="last-90">Last 90 Days</option>
+              <option value="custom">Custom Range</option>
+            </select>
           </div>
         </div>
       </section>
