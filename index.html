@@ -74,12 +74,12 @@
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
       <h2 style="margin-bottom: 0;">CSV File Selector</h2>
-      <span style="background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid #06b6d4; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">v0.1</span>
+      <span style="background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid #06b6d4; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">v0.2</span>
     </div>
 
     <div class="form-group">
       <label for="csvPicker">Select your CSV File:</label>
-      <input type="file" id="csvPicker" accept=".csv">
+      <input type="file" id="csvPicker" accept=".csv,.txt">
     </div>
 
     <div class="display-box">
@@ -87,21 +87,62 @@
       <div id="fileNameDisplay" class="file-name">No file selected</div>
     </div>
 
+    <div style="margin-top: 1.5rem;">
+      <button id="btnExport" style="width: 100%; background: #10b981; color: #fff; border: none; padding: 0.75rem; border-radius: 6px; font-weight: 700; font-size: 1rem; cursor: pointer;">
+        Export Output CSV
+      </button>
+    </div>
+
     <div style="margin-top: 1.5rem; text-align: center; font-size: 0.75rem; color: #64748b; font-family: monospace;">
-      Version <strong>v0.1</strong> &bull; Built: <span style="color: #f59e0b;">2026-08-10 13:11:15 PDT</span> (Pacific Time)
+      Version <strong>v0.2</strong> &bull; Built: <span style="color: #f59e0b;">2026-08-10 13:12:45 PDT</span> (Pacific Time)
     </div>
   </div>
 
   <script>
     const csvPicker = document.getElementById('csvPicker');
     const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const btnExport = document.getElementById('btnExport');
+    
+    let rawFileContent = '';
+    let selectedFileName = '';
 
     csvPicker.addEventListener('change', function(e) {
       if (e.target.files && e.target.files.length > 0) {
-        fileNameDisplay.textContent = e.target.files[0].name;
+        const file = e.target.files[0];
+        selectedFileName = file.name;
+        fileNameDisplay.textContent = file.name;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          rawFileContent = evt.target.result;
+        };
+        reader.readAsText(file);
       } else {
+        selectedFileName = '';
+        rawFileContent = '';
         fileNameDisplay.textContent = 'No file selected';
       }
+    });
+
+    btnExport.addEventListener('click', function() {
+      if (!rawFileContent) {
+        alert('Please select a CSV file first before clicking export!');
+        return;
+      }
+
+      const blob = new Blob([rawFileContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'exported-' + (selectedFileName || 'file.csv'));
+      document.body.appendChild(link);
+      link.click();
+      
+      setTimeout(function() {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 500);
     });
   </script>
 </body>
