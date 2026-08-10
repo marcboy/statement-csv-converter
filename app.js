@@ -437,8 +437,8 @@ function getFilteredTransactions() {
   const endDateVal = document.getElementById('endDate') ? document.getElementById('endDate').value : '';
 
   return transactions.filter(t => {
-    if (startDateVal && t.date < startDateVal) return false;
-    if (endDateVal && t.date > endDateVal) return false;
+    if (startDateVal && t.date && t.date < startDateVal) return false;
+    if (endDateVal && t.date && t.date > endDateVal) return false;
     return true;
   });
 }
@@ -543,10 +543,16 @@ function renderTable() {
 
 // Export strictly matching origin-transaction-template.csv (filtered by date range)
 function exportToOriginCSV() {
+  if (!transactions || transactions.length === 0) {
+    alert('Please select or upload a CSV file first before exporting!');
+    return;
+  }
+
   const filtered = getFilteredTransactions();
-  const selectedTx = filtered.filter(t => t.selected);
+  const selectedTx = filtered.filter(t => t.selected !== false);
+  
   if (selectedTx.length === 0) {
-    alert('No transactions selected within the chosen date range to export!');
+    alert('No transactions match the current date filter or selection!');
     return;
   }
 
@@ -554,25 +560,32 @@ function exportToOriginCSV() {
   csvRows.push('Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)');
 
   selectedTx.forEach(t => {
-    const formattedDate = t.date;
+    const formattedDate = t.date || '';
     const merchant = (t.merchant || '').replace(/"/g, '""');
     const category = (t.category || '').replace(/"/g, '""');
     const account = (t.account || 'My Bank').replace(/"/g, '""');
     const description = (t.description || '').replace(/"/g, '""');
     const notes = (t.notes || '').replace(/"/g, '""');
-    const amount = t.amount.toFixed(2);
+    const amount = (typeof t.amount === 'number' ? t.amount : parseFloat(t.amount) || 0).toFixed(2);
     const tags = (t.tags || '').replace(/"/g, '""');
 
-    csvRows.push(`${formattedDate};${merchant};${category};${account};${description};${notes};${amount};${tags}`);
+    csvRows.push(`${formattedDate};"${merchant}";"${category}";"${account}";"${description}";"${notes}";${amount};"${tags}"`);
   });
 
-  const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvRows.join('\n'));
+  const csvString = csvRows.join('\n');
+  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  
   const link = document.createElement('a');
-  link.setAttribute('href', csvContent);
-  link.setAttribute('download', `origin-transaction-template.csv`);
+  link.href = url;
+  link.setAttribute('download', 'origin-transaction-template.csv');
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
+  
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, 100);
 
   showStatus(`Exported ${selectedTx.length} transactions to origin-transaction-template.csv!`, 'success');
 }
