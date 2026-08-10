@@ -529,15 +529,19 @@ function renderTable() {
 
 function exportToOriginCSV() {
   if (!transactions || transactions.length === 0) {
-    alert('Please select or upload a CSV file first before exporting!');
+    alert('Please select a CSV file first!');
     return;
   }
 
-  const filtered = getFilteredTransactions();
+  let filtered = getFilteredTransactions();
+  if (!filtered || filtered.length === 0) {
+    filtered = transactions; // Fallback to all loaded transactions if date bounds misalign
+  }
+
   const selectedTx = filtered.filter(t => t.selected !== false);
   
   if (selectedTx.length === 0) {
-    alert('No transactions match the current date filter or selection!');
+    alert('No transactions selected to export!');
     return;
   }
 
