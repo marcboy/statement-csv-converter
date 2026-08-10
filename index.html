@@ -73,12 +73,12 @@
 
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-      <h2 style="margin-bottom: 0;">CSV File Selector</h2>
-      <span style="background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid #06b6d4; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">v0.2</span>
+      <h2 style="margin-bottom: 0;">Origin CSV Formatter</h2>
+      <span style="background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid #06b6d4; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">v0.3</span>
     </div>
 
     <div class="form-group">
-      <label for="csvPicker">Select your CSV File:</label>
+      <label for="csvPicker">Select your Statement CSV File:</label>
       <input type="file" id="csvPicker" accept=".csv,.txt">
     </div>
 
@@ -89,12 +89,12 @@
 
     <div style="margin-top: 1.5rem;">
       <button id="btnExport" style="width: 100%; background: #10b981; color: #fff; border: none; padding: 0.75rem; border-radius: 6px; font-weight: 700; font-size: 1rem; cursor: pointer;">
-        Export Output CSV
+        Export Origin Template CSV
       </button>
     </div>
 
     <div style="margin-top: 1.5rem; text-align: center; font-size: 0.75rem; color: #64748b; font-family: monospace;">
-      Version <strong>v0.2</strong> &bull; Built: <span style="color: #f59e0b;">2026-08-10 13:12:45 PDT</span> (Pacific Time)
+      Version <strong>v0.3</strong> &bull; Built: <span style="color: #f59e0b;">2026-08-10 13:15:15 PDT</span> (Pacific Time)
     </div>
   </div>
 
@@ -124,18 +124,124 @@
       }
     });
 
+    // Helper: Normalize any Date (e.g. 8/9/2026 or 2026-08-09) to YYYY-MM-DD
+    function formatDate(raw) {
+      if (!raw) return new Date().toISOString().split('T')[0];
+      try {
+        const parts = raw.trim().split(/[\/\.-]/);
+        if (parts.length === 3) {
+          let m, d, y;
+          if (parts[0].length === 4) {
+            y = parseInt(parts[0], 10);
+            m = parseInt(parts[1], 10);
+            d = parseInt(parts[2], 10);
+          } else {
+            m = parseInt(parts[0], 10);
+            d = parseInt(parts[1], 10);
+            y = parseInt(parts[2], 10);
+            if (y < 100) y += 2000;
+          }
+          if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+            const mm = String(m).padStart(2, '0');
+            const dd = String(d).padStart(2, '0');
+            return `${y}-${mm}-${dd}`;
+          }
+        }
+      } catch (e) {}
+      return new Date().toISOString().split('T')[0];
+    }
+
+    // Helper: Extract clean Merchant name from description
+    function extractMerchant(desc) {
+      if (!desc) return 'Merchant';
+      const cleaned = desc.replace(/#\d+|\bSQ\b|\bTST\b|\bPAYPAL\b/gi, '').trim();
+      const words = cleaned.split(/\s+/).slice(0, 3).join(' ');
+      return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Merchant';
+    }
+
     btnExport.addEventListener('click', function() {
-      if (!rawFileContent) {
+      if (!rawFileContent || !rawFileContent.trim()) {
         alert('Please select a CSV file first before clicking export!');
         return;
       }
 
-      const blob = new Blob([rawFileContent], { type: 'text/csv;charset=utf-8;' });
+      const lines = rawFileContent.split(/\r?\n/).filter(function(l) { return l.trim().length > 0; });
+      if (lines.length === 0) {
+        alert('Selected CSV file is empty!');
+        return;
+      }
+
+      // Detect delimiter (, or ;)
+      const firstLine = lines[0];
+      const delimiter = (firstLine.includes(';') && firstLine.split(';').length >= firstLine.split(',').length) ? ';' : ',';
+
+      const splitRow = function(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"') {
+            inQuotes = !inQuotes;
+          } else if (c === delimiter && !inQuotes) {
+            result.push(current.trim().replace(/^"|"$/g, ''));
+            current = '';
+          } else {
+            current += c;
+          }
+        }
+        result.push(current.trim().replace(/^"|"$/g, ''));
+        return result;
+      };
+
+      const headers = splitRow(lines[0]).map(function(h) { return h.toLowerCase(); });
+      
+      let dateIdx = headers.findIndex(function(h) { return h.includes('date') || h.includes('day'); });
+      let descIdx = headers.findIndex(function(h) { return h.includes('desc') || h.includes('name') || h.includes('payee') || h.includes('title') || h.includes('merchant'); });
+      let amtIdx = headers.findIndex(function(h) { return h.includes('amount') || h.includes('total') || h.includes('price') || h.includes('cost') || h.includes('val'); });
+
+      // Origin CSV Header Schema with semicolon delimiter
+      const originRows = ['Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)'];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = splitRow(lines[i]);
+        if (cols.length < 1 || (cols.length === 1 && !cols[0])) continue;
+
+        let rawDate = dateIdx >= 0 && cols[dateIdx] ? cols[dateIdx] : cols[0];
+        let formattedDate = formatDate(rawDate);
+
+        let rawDesc = descIdx >= 0 && cols[descIdx] ? cols[descIdx] : (cols[1] || 'Transaction');
+        let merchant = extractMerchant(rawDesc);
+
+        let amount = 0;
+        if (amtIdx >= 0 && cols[amtIdx]) {
+          let num = parseFloat(cols[amtIdx].replace(/[\$\s,]/g, ''));
+          if (!isNaN(num)) amount = num;
+        } else {
+          for (let c = cols.length - 1; c >= 0; c--) {
+            let num = parseFloat((cols[c] || '').replace(/[\$\s,]/g, ''));
+            if (!isNaN(num)) { amount = num; break; }
+          }
+        }
+
+        const safeMerchant = merchant.replace(/"/g, '""');
+        const safeCategory = 'Financial';
+        const safeAccount = 'My Bank';
+        const safeDesc = rawDesc.replace(/"/g, '""');
+        const safeNotes = '';
+        const safeAmount = amount.toFixed(2);
+        const safeTags = '';
+
+        originRows.push(formattedDate + ';"' + safeMerchant + '";"' + safeCategory + '";"' + safeAccount + '";"' + safeDesc + '";"' + safeNotes + '";' + safeAmount + ';"' + safeTags + '"');
+      }
+
+      const transformedCSV = originRows.join('\n');
+      const blob = new Blob([transformedCSV], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'exported-' + (selectedFileName || 'file.csv'));
+      link.setAttribute('download', 'origin-transaction-template.csv');
       document.body.appendChild(link);
       link.click();
       
