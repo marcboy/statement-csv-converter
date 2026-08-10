@@ -60,22 +60,7 @@ function setupEvents() {
     renderTable();
   });
 
-  const btnSelectFileTrigger = document.getElementById('btnSelectFileTrigger');
-
-  // Trigger file picker cleanly
-  if (btnSelectFileTrigger) {
-    btnSelectFileTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      fileInput.click();
-    });
-  }
-
-  dropZone.addEventListener('click', (e) => {
-    if (e.target !== fileInput) {
-      fileInput.click();
-    }
-  });
-
+  // Drag & Drop
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropZone.classList.add('dragover');
@@ -88,7 +73,7 @@ function setupEvents() {
   dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length > 0) {
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFile(e.dataTransfer.files[0]);
     }
   });
