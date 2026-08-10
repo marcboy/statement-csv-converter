@@ -27,7 +27,7 @@
         <div class="logo-icon"><i class="fa-solid fa-file-csv"></i></div>
         <div class="logo-text">
           <h1>Origin <span>CSV Converter</span></h1>
-          <span class="badge">v1.6.0</span>
+          <span class="badge">v1.7.0</span>
         </div>
       </div>
       <div class="header-actions">
@@ -41,17 +41,19 @@
     <main class="app-main">
       <!-- Direct Upload Section -->
       <section class="card input-card">
-        <div class="drop-zone" id="dropZone">
+        <div class="drop-zone" id="dropZone" style="cursor: pointer;">
           <div class="drop-zone-icon">
-            <i class="fa-solid fa-file-csv"></i>
+            <i class="fa-solid fa-cloud-arrow-up"></i>
           </div>
-          <label for="fileInput" class="btn btn-primary btn-lg" id="btnSelectFile">
-            <i class="fa-solid fa-folder-open"></i> Choose CSV File
-          </label>
+          <h3 class="drop-zone-title" style="margin-bottom: 0.5rem;">Click to select or drag & drop your CSV file</h3>
+          <p class="drop-zone-sub" style="margin-bottom: 1rem;">Automatically formats into Origin template CSV (`YYYY-MM-DD`, `;` delimiter)</p>
           <input type="file" id="fileInput" accept=".csv,.txt,.log,.pdf,text/csv,text/plain,application/vnd.ms-excel" class="hidden-input">
+          <button type="button" class="btn btn-primary btn-lg" id="btnSelectFileTrigger">
+            <i class="fa-solid fa-folder-open"></i> Choose Statement CSV
+          </button>
           
           <!-- Selected File Name Display Banner -->
-          <div id="selectedFileBanner" class="selected-file-banner" style="display: none;">
+          <div id="selectedFileBanner" class="selected-file-banner" style="display: none; margin-top: 1.5rem;">
             <div class="file-banner-icon"><i class="fa-solid fa-file-csv"></i></div>
             <div class="file-banner-details">
               <span class="file-banner-label">Active Loaded File:</span>
@@ -147,8 +149,8 @@
     <footer class="app-footer">
       <p>
         Origin Transaction Template CSV Formatter &bull; 
-        <strong style="color: var(--accent);">v1.6.0</strong> &bull; 
-        Built: <span style="font-family: var(--font-mono); font-weight: 600; color: #f59e0b;">2026-08-10 12:39:45 PDT</span> &bull; 
+        <strong style="color: var(--accent);">v1.7.0</strong> &bull; 
+        Built: <span style="font-family: var(--font-mono); font-weight: 600; color: #f59e0b;">2026-08-10 12:42:00 PDT</span> &bull; 
         Pacific Time (US & Canada): <span id="pacificTimestamp" style="font-family: var(--font-mono); font-weight: 600; color: #10b981;">Loading time...</span>
       </p>
     </footer>

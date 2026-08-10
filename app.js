@@ -60,10 +60,18 @@ function setupEvents() {
     renderTable();
   });
 
-  // Drag & Drop & Click to Upload
+  const btnSelectFileTrigger = document.getElementById('btnSelectFileTrigger');
+
+  // Trigger file picker cleanly
+  if (btnSelectFileTrigger) {
+    btnSelectFileTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fileInput.click();
+    });
+  }
+
   dropZone.addEventListener('click', (e) => {
-    // Only trigger if clicking drop zone background or text (label already handles itself)
-    if (e.target !== fileInput && !e.target.closest('label')) {
+    if (e.target !== fileInput) {
       fileInput.click();
     }
   });
@@ -85,12 +93,8 @@ function setupEvents() {
     }
   });
 
-  fileInput.addEventListener('click', () => {
-    fileInput.value = '';
-  });
-
   fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
+    if (e.target.files && e.target.files.length > 0) {
       handleFile(e.target.files[0]);
     }
   });
