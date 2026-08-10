@@ -527,7 +527,6 @@ function renderTable() {
   });
 }
 
-// Export strictly matching origin-transaction-template.csv
 function exportToOriginCSV() {
   if (!transactions || transactions.length === 0) {
     alert('Please select or upload a CSV file first before exporting!');
@@ -538,7 +537,7 @@ function exportToOriginCSV() {
   const selectedTx = filtered.filter(t => t.selected !== false);
   
   if (selectedTx.length === 0) {
-    alert('No transactions match the current date filter!');
+    alert('No transactions match the current date filter or selection!');
     return;
   }
 
@@ -558,22 +557,40 @@ function exportToOriginCSV() {
     csvRows.push(`${formattedDate};"${merchant}";"${category}";"${account}";"${description}";"${notes}";${amount};"${tags}"`);
   });
 
-  const csvString = csvRows.join('\n');
-  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'origin-transaction-template.csv');
-  document.body.appendChild(link);
-  link.click();
-  
-  setTimeout(() => {
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, 100);
+  const csvContent = csvRows.join('\n');
+  const filename = 'origin-transaction-template.csv';
 
-  showStatus(`Exported ${selectedTx.length} rows to Origin format!`, 'success');
+  try {
+    // Primary: Blob URL Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    if (navigator.msSaveBlob) { // IE / Edge legacy
+      navigator.msSaveBlob(blob, filename);
+    } else {
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 500);
+    }
+  } catch (err) {
+    console.error('Blob export error, using fallback Data URI:', err);
+    // Fallback: Data URI
+    const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => { document.body.removeChild(link); }, 500);
+  }
+
+  showStatus(`Exported ${selectedTx.length} transactions!`, 'success');
 }
 
 function loadSampleData() {
