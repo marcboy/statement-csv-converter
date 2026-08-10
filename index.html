@@ -128,6 +128,29 @@
               <option value="disabled">Disabled</option>
             </select>
           </div>
+
+          <div class="form-group">
+            <label for="startDate"><i class="fa-regular fa-calendar-minus"></i> Filter Start Date</label>
+            <input type="date" id="startDate" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label for="endDate"><i class="fa-regular fa-calendar-plus"></i> Filter End Date</label>
+            <input type="date" id="endDate" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label for="datePreset"><i class="fa-solid fa-filter"></i> Date Preset Quick Select</label>
+            <select id="datePreset" class="form-control">
+              <option value="all">All Dates</option>
+              <option value="this-month">This Month</option>
+              <option value="last-month">Last Month</option>
+              <option value="this-year">This Year (2026)</option>
+              <option value="last-30">Last 30 Days</option>
+              <option value="last-90">Last 90 Days</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
         </div>
       </section>
 

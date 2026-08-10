@@ -60,6 +60,25 @@ function setupEvents() {
     renderTable();
   });
 
+  // Date Range Controls
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  const datePresetSelect = document.getElementById('datePreset');
+
+  startDateInput.addEventListener('change', () => {
+    datePresetSelect.value = 'custom';
+    renderTable();
+  });
+  endDateInput.addEventListener('change', () => {
+    datePresetSelect.value = 'custom';
+    renderTable();
+  });
+
+  datePresetSelect.addEventListener('change', (e) => {
+    applyDatePreset(e.target.value);
+    renderTable();
+  });
+
   // Drag & Drop
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -394,6 +413,72 @@ function formatDate(dateStr, format) {
   }
 }
 
+// Helper for Date Presets
+function applyDatePreset(preset) {
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+
+  if (preset === 'all') {
+    startDateInput.value = '';
+    endDateInput.value = '';
+    return;
+  }
+
+  const now = new Date();
+  let start = new Date();
+  let end = new Date();
+
+  switch (preset) {
+    case 'this-month':
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      break;
+    case 'last-month':
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0);
+      break;
+    case 'this-year':
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31);
+      break;
+    case 'last-30':
+      start = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+      end = now;
+      break;
+    case 'last-90':
+      start = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
+      end = now;
+      break;
+  }
+
+  startDateInput.value = start.toISOString().split('T')[0];
+  endDateInput.value = end.toISOString().split('T')[0];
+}
+
+// Filter transactions by query & date range
+function getFilteredTransactions(filterQuery = '') {
+  const startDateVal = document.getElementById('startDate') ? document.getElementById('startDate').value : '';
+  const endDateVal = document.getElementById('endDate') ? document.getElementById('endDate').value : '';
+
+  return transactions.filter(t => {
+    // Text search query
+    if (filterQuery) {
+      const matchText = t.merchant.toLowerCase().includes(filterQuery) ||
+                        t.description.toLowerCase().includes(filterQuery) ||
+                        t.category.toLowerCase().includes(filterQuery) ||
+                        t.account.toLowerCase().includes(filterQuery) ||
+                        t.date.includes(filterQuery);
+      if (!matchText) return false;
+    }
+
+    // Date range filtering
+    if (startDateVal && t.date < startDateVal) return false;
+    if (endDateVal && t.date > endDateVal) return false;
+
+    return true;
+  });
+}
+
 // Render Transactions Table for Origin Template
 function renderTable(filterQuery = '') {
   const tbody = document.getElementById('tableBody');
@@ -401,14 +486,7 @@ function renderTable(filterQuery = '') {
 
   const dateFormatSetting = document.getElementById('dateFormat').value;
 
-  const filtered = transactions.filter(t => {
-    if (!filterQuery) return true;
-    return t.merchant.toLowerCase().includes(filterQuery) ||
-           t.description.toLowerCase().includes(filterQuery) ||
-           t.category.toLowerCase().includes(filterQuery) ||
-           t.account.toLowerCase().includes(filterQuery) ||
-           t.date.includes(filterQuery);
-  });
+  const filtered = getFilteredTransactions(filterQuery);
 
   document.getElementById('txCount').textContent = `${filtered.length} transactions`;
 
@@ -418,7 +496,7 @@ function renderTable(filterQuery = '') {
         <td colspan="8">
           <div class="empty-message">
             <i class="fa-solid fa-filter"></i>
-            <p>No matching transactions found.</p>
+            <p>No transactions found matching the selected date range or search filter.</p>
           </div>
         </td>
       </tr>`;
@@ -523,12 +601,14 @@ function updateSummary(list) {
   netEl.className = 'stat-value ' + (net >= 0 ? 'text-success' : 'text-danger');
 }
 
-// Export strictly in Origin Template Format:
-// Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)
+// Export strictly in Origin Template Format for currently filtered date range & selected rows:
 function exportToOriginCSV() {
-  const selectedTx = transactions.filter(t => t.selected);
+  const query = document.getElementById('tableSearch') ? document.getElementById('tableSearch').value.toLowerCase() : '';
+  const filteredList = getFilteredTransactions(query);
+  const selectedTx = filteredList.filter(t => t.selected);
+
   if (selectedTx.length === 0) {
-    alert('Please select at least one transaction to export!');
+    alert('No transactions selected within the chosen date range to export!');
     return;
   }
 
@@ -537,7 +617,7 @@ function exportToOriginCSV() {
 
   let csvRows = [];
 
-  // Exact Header from origin-transaction-template.csv
+  // Header
   csvRows.push(['Transaction Date', 'Merchant', 'Category (optional)', 'Account', 'Description', 'Notes (optional)', 'Amount', 'Tags (optional)'].join(delimiter));
 
   selectedTx.forEach(t => {
@@ -553,15 +633,22 @@ function exportToOriginCSV() {
     csvRows.push([formattedDate, merchant, category, account, description, notes, amount, tags].join(delimiter));
   });
 
+  const startDateVal = document.getElementById('startDate').value;
+  const endDateVal = document.getElementById('endDate').value;
+  let dateTag = 'all_dates';
+  if (startDateVal || endDateVal) {
+    dateTag = `${startDateVal || 'start'}_to_${endDateVal || 'end'}`;
+  }
+
   const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvRows.join('\n'));
   const link = document.createElement('a');
   link.setAttribute('href', csvContent);
-  link.setAttribute('download', `origin_transactions_${new Date().toISOString().split('T')[0]}.csv`);
+  link.setAttribute('download', `origin_transactions_${dateTag}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 
-  showStatus(`Exported ${selectedTx.length} transactions to Origin CSV format!`, 'success');
+  showStatus(`Exported ${selectedTx.length} transactions (${dateTag}) to Origin CSV!`, 'success');
 }
 
 function loadSampleData() {
