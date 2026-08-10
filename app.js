@@ -412,8 +412,13 @@ function applyDatePreset(preset) {
 }
 
 function getFilteredTransactions() {
-  const startDateVal = document.getElementById('startDate') ? document.getElementById('startDate').value : '';
-  const endDateVal = document.getElementById('endDate') ? document.getElementById('endDate').value : '';
+  const startDateVal = document.getElementById('startDate') ? document.getElementById('startDate').value.trim() : '';
+  const endDateVal = document.getElementById('endDate') ? document.getElementById('endDate').value.trim() : '';
+
+  // If both start and end date inputs are empty, return all transactions unchanged
+  if (!startDateVal && !endDateVal) {
+    return transactions;
+  }
 
   return transactions.filter(t => {
     if (startDateVal && t.date && t.date < startDateVal) return false;
