@@ -60,7 +60,14 @@ function setupEvents() {
     renderTable();
   });
 
-  // Drag & Drop
+  // Drag & Drop & Click to Upload
+  dropZone.addEventListener('click', (e) => {
+    // Only trigger if clicking drop zone background or text (label already handles itself)
+    if (e.target !== fileInput && !e.target.closest('label')) {
+      fileInput.click();
+    }
+  });
+
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropZone.classList.add('dragover');
@@ -76,6 +83,10 @@ function setupEvents() {
     if (e.dataTransfer.files.length > 0) {
       handleFile(e.dataTransfer.files[0]);
     }
+  });
+
+  fileInput.addEventListener('click', () => {
+    fileInput.value = '';
   });
 
   fileInput.addEventListener('change', (e) => {
