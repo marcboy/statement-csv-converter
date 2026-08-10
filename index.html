@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StatementFlow - Origin CSV Converter & Transformer</title>
+  <meta name="description" content="Convert any bank, credit card, PDF, text, or CSV statement into the exact Origin template CSV format.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- PDF.js library for client-side PDF parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon"><i class="fa-solid fa-file-csv"></i></div>
+        <div class="logo-text">
+          <h1>Statement<span>Flow</span></h1>
+          <span class="badge"><i class="fa-solid fa-bullseye"></i> Origin Template Ready</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btnSampleData" class="btn btn-outline">
+          <i class="fa-solid fa-flask"></i> Load Demo Statement
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main">
+      <!-- Target Format Info Banner -->
+      <div class="info-banner">
+        <div class="info-icon"><i class="fa-solid fa-circle-info"></i></div>
+        <div class="info-content">
+          <strong>Target Output Format (Origin Standard):</strong>
+          <code>Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)</code>
+        </div>
+      </div>
+
+      <!-- Input Section (Upload CSV/PDF / Text Paste) -->
+      <section class="card input-card">
+        <div class="tab-navigation">
+          <button class="tab-btn active" data-tab="upload-tab">
+            <i class="fa-solid fa-file-csv"></i> Select CSV / File Upload
+          </button>
+          <button class="tab-btn" data-tab="paste-tab">
+            <i class="fa-solid fa-paste"></i> Raw Text / Paste
+          </button>
+        </div>
+
+        <div class="tab-content">
+          <!-- Upload Tab -->
+          <div id="upload-tab" class="tab-pane active">
+            <div class="drop-zone" id="dropZone">
+              <div class="drop-zone-icon">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+              </div>
+              <h3 class="drop-zone-title">Select your CSV statement from your computer</h3>
+              <p class="drop-zone-sub">Supports any bank CSV (Amex, Apple Card, Chase, etc.), PDF, TXT, or log files.</p>
+              <label for="fileInput" class="btn btn-primary btn-lg">
+                <i class="fa-solid fa-folder-open"></i> Browse CSV / PDF File
+              </label>
+              <input type="file" id="fileInput" accept=".csv,.pdf,.txt,.log" class="hidden-input">
+            </div>
+          </div>
+
+          <!-- Paste Tab -->
+          <div id="paste-tab" class="tab-pane">
+            <p class="section-desc">Paste raw transaction text copied directly from your online banking statement:</p>
+            <textarea id="rawTextInput" placeholder="e.g.&#10;08/01/2026 GROCERY STORE #1234 -$45.20&#10;08/02/2026 PAYROLL DIRECT DEPOSIT +$2,500.00&#10;08/03/2026 COFFEE SHOP -$4.75"></textarea>
+            <div class="paste-actions">
+              <button id="btnParseText" class="btn btn-primary">
+                <i class="fa-solid fa-gear"></i> Parse Statement Text
+              </button>
+              <button id="btnClearText" class="btn btn-secondary">
+                <i class="fa-solid fa-trash"></i> Clear Text
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Mapping & Origin Template Settings Controls -->
+      <section class="card config-card">
+        <div class="card-header">
+          <h2><i class="fa-solid fa-sliders"></i> Origin Template Defaults & Mapping</h2>
+          <span class="status-indicator" id="parserStatus"><i class="fa-solid fa-circle-check"></i> Ready</span>
+        </div>
+        <div class="config-grid">
+          <div class="form-group">
+            <label for="defaultAccount"><i class="fa-solid fa-building-columns"></i> Default Account Name</label>
+            <input type="text" id="defaultAccount" class="form-control" value="My Bank" placeholder="e.g., Chase Checking, Amex Card">
+          </div>
+
+          <div class="form-group">
+            <label for="dateFormat"><i class="fa-regular fa-calendar"></i> Transaction Date Format</label>
+            <select id="dateFormat" class="form-control">
+              <option value="YYYY-MM-DD">YYYY-MM-DD (Origin Default: 2026-08-10)</option>
+              <option value="MM/DD/YYYY">MM/DD/YYYY (08/10/2026)</option>
+              <option value="DD/MM/YYYY">DD/MM/YYYY (10/08/2026)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="csvDelimiter"><i class="fa-solid fa-table-columns"></i> Delimiter (Origin requires Semicolon)</label>
+            <select id="csvDelimiter" class="form-control">
+              <option value=";">Semicolon (;) [Origin Standard]</option>
+              <option value=",">Comma (,)</option>
+              <option value="&#9;">Tab (\t)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="autoCategorize"><i class="fa-solid fa-tags"></i> Auto-Categorize & Merchant Extract</label>
+            <select id="autoCategorize" class="form-control">
+              <option value="enabled">Enabled (Smart Rules)</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Data Preview & Editor Table -->
+      <section class="card table-card">
+        <div class="table-header">
+          <div class="table-title">
+            <h2><i class="fa-solid fa-list-check"></i> Origin Format Preview</h2>
+            <span class="count-badge" id="txCount">0 transactions</span>
+          </div>
+          <div class="table-actions">
+            <div class="search-box">
+              <i class="fa-solid fa-search"></i>
+              <input type="text" id="tableSearch" placeholder="Search transactions...">
+            </div>
+            <button id="btnAddRow" class="btn btn-secondary">
+              <i class="fa-solid fa-plus"></i> Add Row
+            </button>
+            <button id="btnExportCSV" class="btn btn-success">
+              <i class="fa-solid fa-download"></i> Export Origin CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="dataTable">
+            <thead>
+              <tr>
+                <th width="40"><input type="checkbox" id="selectAll"></th>
+                <th>Transaction Date</th>
+                <th>Merchant</th>
+                <th>Category</th>
+                <th>Account</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th width="70">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr class="empty-state">
+                <td colspan="8">
+                  <div class="empty-message">
+                    <i class="fa-solid fa-folder-open"></i>
+                    <p>Select your CSV file from your computer or drop it above to transform it into the Origin format!</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Summary Stats Footer -->
+        <div class="table-summary" id="tableSummary">
+          <div class="stat-item">
+            <span class="stat-label">Total Debits:</span>
+            <span class="stat-value text-danger" id="sumDebits">$0.00</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Total Credits:</span>
+            <span class="stat-value text-success" id="sumCredits">$0.00</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Net Total:</span>
+            <span class="stat-value" id="netBalance">$0.00</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>StatementFlow to Origin CSV Transformer &bull; Compliant with origin-transaction-template.csv schema.</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
