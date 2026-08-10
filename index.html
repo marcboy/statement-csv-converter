@@ -3,736 +3,530 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Origin Statement CSV Formatter v2.0</title>
-  <meta name="description" content="Compact, fast statement to Origin CSV converter.">
-  
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-  
-  <!-- PDF.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <title>Origin Statement CSV Formatter</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #06b6d4;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
 
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <link rel="stylesheet" href="styles.css">
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 1.5rem;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 { font-size: 1.4rem; font-weight: 700; }
+    h1 span { color: var(--accent); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 1rem;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .control-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    input[type="text"], input[type="date"], select {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 0.55rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .btn:hover { background: var(--primary-hover); }
+
+    .btn-success {
+      background: #10b981;
+    }
+    .btn-success:hover { background: #059669; }
+
+    .file-badge {
+      display: inline-block;
+      margin-left: 0.5rem;
+      padding: 0.25rem 0.6rem;
+      background: rgba(6, 182, 212, 0.15);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Table */
+    .table-container {
+      overflow-x: auto;
+      max-height: 450px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #0f172a;
+      color: var(--text-muted);
+      position: sticky;
+      top: 0;
+    }
+
+    .amount-positive { color: var(--success); }
+    .amount-negative { color: var(--danger); }
+
+    /* Activity Log */
+    .log-box {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #10b981;
+      height: 120px;
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body>
-  <div class="compact-container">
-    <!-- Header bar with Title & Version -->
-    <header class="compact-header">
-      <div class="brand">
-        <i class="fa-solid fa-file-csv brand-icon"></i>
-        <h1>Origin <span>CSV Formatter</span></h1>
-        <span class="v-tag">v4.1.0</span>
-      </div>
-      <div class="status-box" id="parserStatus">
-        <i class="fa-solid fa-circle-check"></i> Ready
-      </div>
+
+  <div class="container">
+    <header>
+      <h1>Origin <span>CSV Statement Formatter</span></h1>
+      <span style="font-size: 0.8rem; color: var(--text-muted);">v5.0.0 (Clean Build)</span>
     </header>
 
-    <!-- Toolbar Card (File Select, Account Name, Date Range, Export) -->
-    <section class="compact-toolbar card">
-      <!-- File Selector Input & Active File Name Display -->
-      <div class="tool-item file-selector-wrapper">
-        <label for="fileInput">Select CSV File</label>
-        <input type="file" id="fileInput" class="form-control file-input-styled" accept=".csv,.txt,.log,.pdf,text/csv,text/plain,application/vnd.ms-excel">
-        <div id="fileDisplayBadge" class="file-badge">
-          <i class="fa-solid fa-file-csv"></i> <span id="fileNameText">No file selected</span>
-        </div>
+    <!-- Toolbar Controls -->
+    <div class="card controls">
+      <div class="control-group">
+        <label for="csvFileInput">1. Select Input File</label>
+        <input type="file" id="csvFileInput" accept=".csv,.txt" style="color: var(--text);">
       </div>
 
-      <!-- Settings & Controls -->
-      <div class="tool-item">
-        <label for="defaultAccount">Account Name</label>
-        <input type="text" id="defaultAccount" class="form-control" value="My Bank" placeholder="Account Name">
+      <div class="control-group">
+        <label for="accountNameInput">Account Name</label>
+        <input type="text" id="accountNameInput" value="My Bank" style="width: 140px;">
       </div>
 
-      <div class="tool-item">
-        <label for="startDate">Start Date (Optional)</label>
-        <input type="date" id="startDate" class="form-control">
+      <div class="control-group">
+        <label for="startDateInput">Start Date (Optional)</label>
+        <input type="date" id="startDateInput">
       </div>
 
-      <div class="tool-item">
-        <label for="endDate">End Date (Optional)</label>
-        <input type="date" id="endDate" class="form-control">
+      <div class="control-group">
+        <label for="endDateInput">End Date (Optional)</label>
+        <input type="date" id="endDateInput">
       </div>
 
-      <div class="tool-item">
-        <label for="datePreset">Preset</label>
-        <select id="datePreset" class="form-control">
-          <option value="all">All Dates</option>
-          <option value="this-month">This Month</option>
-          <option value="last-month">Last Month</option>
-          <option value="this-year">This Year</option>
-          <option value="last-30">Last 30 Days</option>
-          <option value="last-90">Last 90 Days</option>
-          <option value="custom">Custom</option>
-        </select>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="tool-item actions-item">
-        <button id="btnExportCSV" class="btn btn-success" onclick="exportToOriginCSV()">
-          <i class="fa-solid fa-download"></i> Export Origin CSV
-        </button>
-        <button id="btnSampleData" class="btn btn-outline" onclick="loadSampleData()" title="Load Demo Sample Data">
-          <i class="fa-solid fa-flask"></i> Demo
+      <div class="control-group" style="margin-left: auto;">
+        <button id="btnExport" class="btn btn-success">
+          Export Origin CSV
         </button>
       </div>
-    </section>
+    </div>
 
-    <!-- Transactions Data Table Card -->
-    <section class="card table-card">
-      <div class="table-header">
-        <div class="table-title">
-          <h2>Extracted Output</h2>
-          <span class="count-badge" id="txCount">0 transactions</span>
-        </div>
+    <!-- Loaded File Status -->
+    <div class="card" style="padding: 0.75rem 1.25rem; display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <strong>Active Loaded File:</strong>
+        <span id="activeFileName" class="file-badge">None Selected</span>
       </div>
+      <div id="rowCountBadge" style="font-size: 0.85rem; color: var(--text-muted);">0 transactions</div>
+    </div>
 
-      <div class="table-responsive">
-        <table class="data-table" id="dataTable">
-          <thead>
-            <tr>
-              <th width="40"><input type="checkbox" id="selectAll" checked></th>
-              <th>Transaction Date</th>
-              <th>Merchant</th>
-              <th>Category</th>
-              <th>Account</th>
-              <th>Description</th>
-              <th>Notes</th>
-              <th>Amount</th>
-              <th>Tags</th>
-              <th width="40"></th>
-            </tr>
-          </thead>
-          <tbody id="tableBody">
-            <tr class="empty-state">
-              <td colspan="10">
-                <div class="empty-message">
-                  <i class="fa-solid fa-cloud-arrow-up"></i>
-                  <p>Click <strong>Select CSV File</strong> above to load and transform your statement into Origin format.</p>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <!-- Output Preview Table -->
+    <div class="card table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Transaction Date</th>
+            <th>Merchant</th>
+            <th>Category (optional)</th>
+            <th>Account</th>
+            <th>Description</th>
+            <th>Notes (optional)</th>
+            <th>Amount</th>
+            <th>Tags (optional)</th>
+          </tr>
+        </thead>
+        <tbody id="previewTableBody">
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+              No file loaded yet. Select your CSV file above to start!
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-    <!-- On-Screen Debug Log Console -->
-    <section class="card log-card" style="margin-top: 0.5rem; background: #000; border: 1px solid rgba(255,255,255,0.15);">
-      <div class="log-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-        <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent); font-family: var(--font-mono);"><i class="fa-solid fa-terminal"></i> Activity & Debug Console Log</span>
-        <button onclick="document.getElementById('debugLogContainer').innerHTML='';" class="btn btn-outline" style="padding: 2px 8px; font-size: 0.7rem;">Clear Log</button>
+    <!-- Real-time Activity Log -->
+    <div class="card">
+      <div style="font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-muted); text-transform: uppercase;">
+        Activity & Processing Log
       </div>
-      <div id="debugLogContainer" style="font-family: var(--font-mono); font-size: 0.78rem; color: #10b981; max-height: 160px; overflow-y: auto; background: #050811; padding: 0.5rem; border-radius: 4px; border: 1px solid #1e293b; line-height: 1.4;">
-        <div>[SYSTEM] Debug Logger Initialized v4.1.0. Ready for file selection or export actions.</div>
+      <div id="activityLog" class="log-box">
+        <div>[SYSTEM] App Initialized v5.0.0. Awaiting file input...</div>
       </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="compact-footer">
-      <span>Origin Template Converter &bull; <strong style="color: var(--accent);">v4.1.0</strong> &bull; Built: <span style="font-family: var(--font-mono); font-weight: 600; color: #f59e0b;">2026-08-10 13:08:00 PDT</span></span>
-    </footer>
+    </div>
   </div>
 
-  <!-- Embedded Script to Guarantee 100% Cache-Busting -->
   <script>
-// StatementFlow - Origin CSV Formatter Engine v4.0
-if (window.pdfjsLib) {
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
+    // State
+    let loadedTransactions = [];
 
-let transactions = [];
-let currentFileName = '';
-
-const categoryRules = [
-  { category: 'Groceries', keywords: ['walmart', 'target', 'kroger', 'trader joe', 'whole foods', 'safeway', 'aldi', 'grocery', 'supermarket', 'costco'] },
-  { category: 'Dining', keywords: ['starbucks', 'mcdonald', 'uber eats', 'doordash', 'grubhub', 'cafe', 'restaurant', 'burger', 'pizza', 'dunkin', 'taco'] },
-  { category: 'Subscriptions', keywords: ['netflix', 'spotify', 'apple.com', 'google', 'amazon prime', 'hulu', 'github', 'openai', 'chatgpt', 'adobe'] },
-  { category: 'Financial', keywords: ['payroll', 'direct deposit', 'salary', 'stipend', 'employer', 'ach deposit', 'dividend', 'interest payment', 'origin'] },
-  { category: 'Utilities', keywords: ['electric', 'water', 'gas company', 'comcast', 'verizon', 't-mobile', 'att', 'utility', 'internet', 'insurance'] },
-  { category: 'Shopping', keywords: ['amazon', 'ebay', 'best buy', 'nike', 'zara', 'etsy', 'store', 'shop'] },
-  { category: 'Transportation', keywords: ['chevron', 'shell', 'exxon', 'bp', 'uber', 'lyft', 'parking', 'transit', 'gasoline', 'fuel'] }
-];
-
-document.addEventListener('DOMContentLoaded', () => {
-  setupEvents();
-  logMessage('App v4.1.0 ready. Select your CSV file to begin.', 'success');
-});
-
-function logMessage(msg, type = 'info') {
-  console.log(`[StatementFlow v4.0] ${msg}`);
-  const container = document.getElementById('debugLogContainer');
-  if (container) {
-    const timeStr = new Date().toLocaleTimeString();
-    const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#06b6d4';
-    const div = document.createElement('div');
-    div.style.color = color;
-    div.innerHTML = `<span style="color:#64748b;">[${timeStr}]</span> ${msg}`;
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-  }
-}
-
-function setupEvents() {
-  const fileInput = document.getElementById('fileInput');
-  const btnExportCSV = document.getElementById('btnExportCSV');
-  const btnSampleData = document.getElementById('btnSampleData');
-  const selectAll = document.getElementById('selectAll');
-  const defaultAccountInput = document.getElementById('defaultAccount');
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-  const datePresetSelect = document.getElementById('datePreset');
-
-  if (fileInput) {
-    fileInput.addEventListener('click', () => {
-      fileInput.value = '';
-    });
-
-    fileInput.addEventListener('change', (e) => {
-      if (e.target.files && e.target.files.length > 0) {
-        logMessage(`File input change event fired for: ${e.target.files[0].name}`, 'info');
-        handleFile(e.target.files[0]);
-      }
-    });
-  }
-
-  if (defaultAccountInput) {
-    defaultAccountInput.addEventListener('input', () => {
-      const defaultAcc = defaultAccountInput.value || 'My Bank';
-      transactions.forEach(t => t.account = defaultAcc);
-      renderTable();
-    });
-  }
-
-  if (startDateInput) startDateInput.addEventListener('change', () => { if (datePresetSelect) datePresetSelect.value = 'custom'; renderTable(); });
-  if (endDateInput) endDateInput.addEventListener('change', () => { if (datePresetSelect) datePresetSelect.value = 'custom'; renderTable(); });
-  if (datePresetSelect) datePresetSelect.addEventListener('change', (e) => { applyDatePreset(e.target.value); renderTable(); });
-
-  if (selectAll) {
-    selectAll.addEventListener('change', (e) => {
-      const isChecked = e.target.checked;
-      transactions.forEach(t => t.selected = isChecked);
-      renderTable();
-    });
-  }
-}
-
-function showStatus(msg, type = 'success') {
-  const statusEl = document.getElementById('parserStatus');
-  if (!statusEl) return;
-  if (type === 'error') {
-    statusEl.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${msg}`;
-    statusEl.style.color = 'var(--danger)';
-  } else {
-    statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
-    statusEl.style.color = 'var(--success)';
-  }
-}
-
-function displaySelectedFileName(fileName) {
-  currentFileName = fileName;
-  logMessage(`Active File: "${fileName}"`, 'info');
-  const fileNameText = document.getElementById('fileNameText');
-  if (fileNameText) {
-    fileNameText.textContent = fileName;
-    fileNameText.style.color = '#06b6d4';
-  }
-}
-
-async function handleFile(file) {
-  if (!file) return;
-  displaySelectedFileName(file.name);
-  logMessage(`Reading file "${file.name}" (${file.size} bytes)...`, 'info');
-  showStatus(`Loaded: ${file.name}`, 'success');
-
-  try {
-    const text = await file.text();
-    logMessage(`Read completed (${text.length} characters). Parsing CSV...`, 'info');
-    parseCSVFile(text);
-  } catch (err) {
-    console.error(err);
-    logMessage(`ERROR reading file: ${err.message}`, 'error');
-    showStatus('Error reading file contents', 'error');
-  }
-}
-
-function parseCSVFile(csvText) {
-  if (!csvText || !csvText.trim()) {
-    logMessage('CSV content is empty!', 'error');
-    showStatus('Selected file is empty', 'error');
-    return;
-  }
-
-  const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
-  logMessage(`Processing ${lines.length} lines of text...`, 'info');
-  if (lines.length === 0) return;
-
-  const firstLine = lines[0];
-  let delimiter = ',';
-  if (firstLine.includes(';') && (firstLine.split(';').length >= firstLine.split(',').length)) {
-    delimiter = ';';
-  } else if (firstLine.includes('\t')) {
-    delimiter = '\t';
-  }
-  logMessage(`Detected delimiter: "${delimiter === '\t' ? '\\t' : delimiter}"`, 'info');
-
-  const splitCSVRow = (line) => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === delimiter && !inQuotes) {
-        result.push(current.trim().replace(/^"|"$/g, ''));
-        current = '';
-      } else {
-        current += char;
+    // Helper: Log message to on-screen console
+    function log(msg, type = 'info') {
+      console.log(msg);
+      const logBox = document.getElementById('activityLog');
+      if (logBox) {
+        const time = new Date().toLocaleTimeString();
+        const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#06b6d4';
+        const div = document.createElement('div');
+        div.style.color = color;
+        div.innerHTML = `<span style="color:#64748b;">[${time}]</span> ${msg}`;
+        logBox.appendChild(div);
+        logBox.scrollTop = logBox.scrollHeight;
       }
     }
-    result.push(current.trim().replace(/^"|"$/g, ''));
-    return result;
-  };
 
-  const headers = splitCSVRow(lines[0]).map(h => h.toLowerCase());
-  
-  let dateIdx = headers.findIndex(h => h.includes('date') || h.includes('time') || h.includes('day'));
-  let merchantIdx = headers.findIndex(h => h.includes('merchant') || h.includes('payee') || h.includes('vendor'));
-  let descIdx = headers.findIndex(h => h.includes('description') || h.includes('title') || h.includes('name') || h.includes('memo') || h.includes('item') || h.includes('details') || h.includes('action'));
-  let amountIdx = headers.findIndex(h => h.includes('amount') || h.includes('total') || h.includes('price') || h.includes('cost') || h.includes('debit') || h.includes('value'));
-  let catIdx = headers.findIndex(h => h.includes('category') || h.includes('type'));
-  let accountIdx = headers.findIndex(h => h.includes('account'));
-  let notesIdx = headers.findIndex(h => h.includes('notes') || h.includes('memo') || h.includes('comment'));
-  let tagsIdx = headers.findIndex(h => h.includes('tags') || h.includes('labels'));
+    // Bind Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      const fileInput = document.getElementById('csvFileInput');
+      const btnExport = document.getElementById('btnExport');
+      const startDateInput = document.getElementById('startDateInput');
+      const endDateInput = document.getElementById('endDateInput');
+      const accountNameInput = document.getElementById('accountNameInput');
 
-  const parsed = [];
-  const defaultAcc = document.getElementById('defaultAccount') ? (document.getElementById('defaultAccount').value || 'My Bank') : 'My Bank';
+      // File Selection Change Event
+      fileInput.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        const file = files[0];
+        
+        log(`File selected: "${file.name}" (${file.size} bytes)`, 'info');
+        document.getElementById('activeFileName').textContent = file.name;
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = splitCSVRow(lines[i]);
-    if (cols.length < 1 || (cols.length === 1 && !cols[0])) continue;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const content = evt.target.result;
+          log(`File read successfully (${content.length} characters). Parsing CSV...`, 'info');
+          processCSVContent(content);
+        };
+        reader.onerror = function() {
+          log(`Failed to read file!`, 'error');
+        };
+        reader.readAsText(file);
+      });
 
-    let rawDate = dateIdx >= 0 && cols[dateIdx] ? cols[dateIdx] : '';
-    if (!rawDate) {
-      for (const col of cols) {
-        if (col && /\d{1,4}[\/\.-]\d{1,4}/.test(col)) {
-          rawDate = col;
-          break;
-        }
+      // Account Name Edit Event
+      accountNameInput.addEventListener('input', () => {
+        const acc = accountNameInput.value || 'My Bank';
+        loadedTransactions.forEach(t => t.account = acc);
+        renderTable();
+      });
+
+      // Date Filter Events
+      startDateInput.addEventListener('change', renderTable);
+      endDateInput.addEventListener('change', renderTable);
+
+      // Export Button Click Event
+      btnExport.addEventListener('click', () => {
+        exportCSV();
+      });
+    });
+
+    // Parse CSV Text Content
+    function processCSVContent(text) {
+      if (!text || !text.trim()) {
+        log('Error: File content is empty!', 'error');
+        return;
       }
-    }
-    if (!rawDate) rawDate = new Date().toISOString().split('T')[0];
-    const normalizedDate = normalizeDate(rawDate);
 
-    const rawDesc = descIdx >= 0 && cols[descIdx] ? cols[descIdx] : (cols[1] || cols[0] || 'Transaction');
-    const merchant = merchantIdx >= 0 && cols[merchantIdx] ? cols[merchantIdx] : extractMerchantName(rawDesc);
-    const category = catIdx >= 0 && cols[catIdx] ? cols[catIdx] : autoCategorizeText(rawDesc);
-    const account = accountIdx >= 0 && cols[accountIdx] ? cols[accountIdx] : defaultAcc;
-    const notes = notesIdx >= 0 && cols[notesIdx] ? cols[notesIdx] : '';
-    const tags = tagsIdx >= 0 && cols[tagsIdx] ? cols[tagsIdx] : '';
+      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+      if (lines.length === 0) return;
 
-    let amount = 0;
-    if (amountIdx >= 0 && cols[amountIdx] !== undefined && cols[amountIdx] !== '') {
-      const parsedNum = parseFloat(cols[amountIdx].replace(/[\$\s,]/g, ''));
-      if (!isNaN(parsedNum)) amount = parsedNum;
-    } else {
-      for (let c = cols.length - 1; c >= 0; c--) {
-        const col = cols[c];
-        if (col && /^-?\$?\s*\d+(?:\.\d+)?$/.test(col.replace(/,/g, ''))) {
-          const parsedNum = parseFloat(col.replace(/[\$\s,]/g, ''));
-          if (!isNaN(parsedNum)) {
-            amount = parsedNum;
-            break;
+      log(`Found ${lines.length} lines of text. Detecting columns...`, 'info');
+
+      // Detect delimiter (, or ;)
+      const firstLine = lines[0];
+      const delimiter = (firstLine.includes(';') && firstLine.split(';').length >= firstLine.split(',').length) ? ';' : ',';
+      log(`Using delimiter: "${delimiter}"`, 'info');
+
+      const splitRow = (line) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"') {
+            inQuotes = !inQuotes;
+          } else if (c === delimiter && !inQuotes) {
+            result.push(current.trim().replace(/^"|"$/g, ''));
+            current = '';
+          } else {
+            current += c;
           }
         }
-      }
-    }
+        result.push(current.trim().replace(/^"|"$/g, ''));
+        return result;
+      };
 
-    parsed.push({
-      id: generateId(),
-      date: normalizedDate,
-      merchant: merchant,
-      category: category,
-      account: account,
-      description: rawDesc,
-      notes: notes,
-      amount: amount,
-      tags: tags,
-      selected: true
-    });
-  }
-
-  if (parsed.length > 0) {
-    transactions = parsed;
-    logMessage(`CSV parsed successfully! ${parsed.length} transactions extracted into table.`, 'success');
-    renderTable();
-    showStatus(`Parsed ${parsed.length} rows successfully`, 'success');
-  } else {
-    logMessage('Falling back to raw text parsing...', 'info');
-    parseRawText(csvText);
-  }
-}
-
-function parseRawText(text) {
-  const lines = text.split(/\r?\n/);
-  const parsed = [];
-  const defaultAcc = document.getElementById('defaultAccount') ? (document.getElementById('defaultAccount').value || 'My Bank') : 'My Bank';
-  const dateRegex = /\b(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}|\d{4}[\/\.-]\d{1,2}[\/\.-]\d{1,2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}(?:,\s*\d{2,4})?)\b/i;
-
-  for (let line of lines) {
-    line = line.trim();
-    if (!line || line.length < 5) continue;
-
-    const dateMatch = line.match(dateRegex);
-    if (dateMatch) {
-      const rawDate = dateMatch[0];
-      const normalizedDate = normalizeDate(rawDate);
-      const amounts = Array.from(line.matchAll(/[\+\-]?\$?\s*\d{1,3}(?:,\d{3})*\.\d{2}\b/g));
+      const headers = splitRow(lines[0]).map(h => h.toLowerCase());
       
-      if (amounts.length > 0) {
-        const amtStr = amounts[0][0];
-        let numVal = parseFloat(amtStr.replace(/[\$\s,]/g, ''));
-        let isDebit = numVal < 0 || line.includes('-') || line.toUpperCase().includes('DR') || line.toUpperCase().includes('DEBIT');
-        if (line.toUpperCase().includes('CREDIT') || line.toUpperCase().includes('DEPOSIT') || line.includes('+')) {
-          isDebit = false;
+      let dateIdx = headers.findIndex(h => h.includes('date') || h.includes('day'));
+      let descIdx = headers.findIndex(h => h.includes('desc') || h.includes('name') || h.includes('payee') || h.includes('title') || h.includes('merchant'));
+      let amtIdx = headers.findIndex(h => h.includes('amount') || h.includes('total') || h.includes('price') || h.includes('cost') || h.includes('val'));
+
+      const defaultAccount = document.getElementById('accountNameInput').value || 'My Bank';
+      const parsed = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = splitRow(lines[i]);
+        if (cols.length < 1 || (cols.length === 1 && !cols[0])) continue;
+
+        // Parse Date
+        let rawDate = dateIdx >= 0 && cols[dateIdx] ? cols[dateIdx] : cols[0];
+        let formattedDate = formatDate(rawDate);
+
+        // Parse Description & Merchant
+        let rawDesc = descIdx >= 0 && cols[descIdx] ? cols[descIdx] : (cols[1] || 'Transaction');
+        let merchant = extractMerchant(rawDesc);
+
+        // Parse Amount
+        let amount = 0;
+        if (amtIdx >= 0 && cols[amtIdx]) {
+          let num = parseFloat(cols[amtIdx].replace(/[\$\s,]/g, ''));
+          if (!isNaN(num)) amount = num;
+        } else {
+          for (let c = cols.length - 1; c >= 0; c--) {
+            let num = parseFloat((cols[c] || '').replace(/[\$\s,]/g, ''));
+            if (!isNaN(num)) { amount = num; break; }
+          }
         }
-
-        numVal = Math.abs(numVal);
-        if (isDebit) numVal = -numVal;
-
-        let desc = line.replace(rawDate, '').replace(amtStr, '').replace(/\s+/g, ' ').trim();
-        desc = desc.replace(/^[-\:\,\s]+|[规律-\:\,\s]+$/g, '');
-        if (!desc) desc = 'Transaction';
 
         parsed.push({
-          id: generateId(),
-          date: normalizedDate,
-          merchant: extractMerchantName(desc),
-          category: autoCategorizeText(desc),
-          account: defaultAcc,
-          description: desc,
+          date: formattedDate,
+          merchant: merchant,
+          category: 'Financial',
+          account: defaultAccount,
+          description: rawDesc,
           notes: '',
-          amount: numVal,
-          tags: '',
-          selected: true
+          amount: amount,
+          tags: ''
         });
       }
-    }
-  }
 
-  if (parsed.length > 0) {
-    transactions = parsed;
-    logMessage(`Raw text extraction complete: ${parsed.length} rows created.`, 'success');
-    renderTable();
-    showStatus(`Extracted ${parsed.length} transactions`, 'success');
-  }
-}
-
-function extractMerchantName(desc) {
-  let cleaned = (desc || '').replace(/#\d+|\bSQ\b|\bTST\b|\bPAYPAL\b|\bINC\b|\bLLC\b|\bSTORE\b/gi, '').trim();
-  const words = cleaned.split(/\s+/).slice(0, 3).join(' ');
-  return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Merchant';
-}
-
-function autoCategorizeText(desc) {
-  const lower = (desc || '').toLowerCase();
-  for (const rule of categoryRules) {
-    for (const kw of rule.keywords) {
-      if (lower.includes(kw)) {
-        return rule.category;
-      }
-    }
-  }
-  return 'Financial';
-}
-
-function normalizeDate(raw) {
-  if (!raw) return new Date().toISOString().split('T')[0];
-  try {
-    const parts = raw.trim().split(/[\/\.-]/);
-    if (parts.length === 3) {
-      let m, d, y;
-      if (parts[0].length === 4) {
-        y = parseInt(parts[0], 10);
-        m = parseInt(parts[1], 10);
-        d = parseInt(parts[2], 10);
-      } else {
-        m = parseInt(parts[0], 10);
-        d = parseInt(parts[1], 10);
-        y = parseInt(parts[2], 10);
-        if (y < 100) y += 2000;
-      }
-      if (!isNaN(y) && !isNaN(m) && !isNaN(d) && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-        const mm = String(m).padStart(2, '0');
-        const dd = String(d).padStart(2, '0');
-        return `${y}-${mm}-${dd}`;
-      }
-    }
-    const parsedDate = new Date(raw);
-    if (!isNaN(parsedDate.getTime())) {
-      const yyyy = parsedDate.getFullYear();
-      const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(parsedDate.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    }
-  } catch (e) {}
-  return new Date().toISOString().split('T')[0];
-}
-
-function applyDatePreset(preset) {
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-  if (!startDateInput || !endDateInput) return;
-
-  if (preset === 'all') {
-    startDateInput.value = '';
-    endDateInput.value = '';
-    return;
-  }
-
-  const now = new Date();
-  let start = new Date();
-  let end = new Date();
-
-  switch (preset) {
-    case 'this-month':
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      break;
-    case 'last-month':
-      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      end = new Date(now.getFullYear(), now.getMonth(), 0);
-      break;
-    case 'this-year':
-      start = new Date(now.getFullYear(), 0, 1);
-      end = new Date(now.getFullYear(), 11, 31);
-      break;
-    case 'last-30':
-      start = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
-      end = now;
-      break;
-    case 'last-90':
-      start = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
-      end = now;
-      break;
-  }
-
-  startDateInput.value = start.toISOString().split('T')[0];
-  endDateInput.value = end.toISOString().split('T')[0];
-}
-
-function getFilteredTransactions() {
-  const startDateVal = document.getElementById('startDate') ? document.getElementById('startDate').value.trim() : '';
-  const endDateVal = document.getElementById('endDate') ? document.getElementById('endDate').value.trim() : '';
-
-  if (!startDateVal && !endDateVal) {
-    return transactions;
-  }
-
-  return transactions.filter(t => {
-    if (startDateVal && t.date && t.date < startDateVal) return false;
-    if (endDateVal && t.date && t.date > endDateVal) return false;
-    return true;
-  });
-}
-
-function renderTable() {
-  const tbody = document.getElementById('tableBody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-
-  const filtered = getFilteredTransactions();
-  const txCount = document.getElementById('txCount');
-  if (txCount) txCount.textContent = `${filtered.length} transactions`;
-
-  if (filtered.length === 0) {
-    tbody.innerHTML = `
-      <tr class="empty-state">
-        <td colspan="10">
-          <div class="empty-message">
-            <i class="fa-solid fa-filter"></i>
-            <p>No transactions match the selected filters or file.</p>
-          </div>
-        </td>
-      </tr>`;
-    return;
-  }
-
-  filtered.forEach(t => {
-    const tr = document.createElement('tr');
-    const amountColorClass = t.amount < 0 ? 'text-danger' : 'text-success';
-
-    tr.innerHTML = `
-      <td>
-        <input type="checkbox" class="row-checkbox" ${t.selected ? 'checked' : ''} data-id="${t.id}">
-      </td>
-      <td>
-        <input type="date" class="cell-input mono" value="${t.date}" data-field="date" data-id="${t.id}">
-      </td>
-      <td>
-        <input type="text" class="cell-input" value="${escapeHtml(t.merchant)}" data-field="merchant" data-id="${t.id}">
-      </td>
-      <td>
-        <input type="text" class="cell-input" value="${escapeHtml(t.category)}" data-field="category" data-id="${t.id}">
-      </td>
-      <td>
-        <input type="text" class="cell-input" value="${escapeHtml(t.account)}" data-field="account" data-id="${t.id}">
-      </td>
-      <td>
-        <input type="text" class="cell-input" value="${escapeHtml(t.description)}" data-field="description" data-id="${t.id}">
-      </td>
-      <td>
-        <input type="text" class="cell-input" value="${escapeHtml(t.notes)}" data-field="notes" data-id="${t.id}">
-      </td>
-      <td>
-        <input type="number" step="0.01" class="cell-input mono ${amountColorClass}" value="${t.amount}" data-field="amount" data-id="${t.id}">
-      </td>
-      <td>
-        <input type="text" class="cell-input" value="${escapeHtml(t.tags)}" data-field="tags" data-id="${t.id}">
-      </td>
-      <td>
-        <button class="btn-icon btn-delete" data-id="${t.id}" title="Delete Row">
-          <i class="fa-solid fa-trash-can"></i>
-        </button>
-      </td>
-    `;
-
-    tbody.appendChild(tr);
-  });
-
-  tbody.querySelectorAll('.cell-input').forEach(input => {
-    input.addEventListener('change', (e) => {
-      const id = e.target.getAttribute('data-id');
-      const field = e.target.getAttribute('data-field');
-      let val = e.target.value;
-
-      const tx = transactions.find(item => item.id === id);
-      if (tx) {
-        if (field === 'amount') {
-          tx.amount = parseFloat(val) || 0;
-        } else {
-          tx[field] = val;
-        }
-        renderTable();
-      }
-    });
-  });
-
-  tbody.querySelectorAll('.row-checkbox').forEach(cb => {
-    cb.addEventListener('change', (e) => {
-      const id = e.target.getAttribute('data-id');
-      const tx = transactions.find(item => item.id === id);
-      if (tx) tx.selected = e.target.checked;
-    });
-  });
-
-  tbody.querySelectorAll('.btn-delete').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.getAttribute('data-id');
-      transactions = transactions.filter(t => t.id !== id);
+      loadedTransactions = parsed;
+      log(`Successfully parsed ${parsed.length} transaction rows!`, 'success');
       renderTable();
-    });
-  });
-}
+    }
 
-function exportToOriginCSV() {
-  logMessage('EXPORT CLICKED!', 'info');
+    // Format raw date to YYYY-MM-DD cleanly
+    function formatDate(raw) {
+      if (!raw) return new Date().toISOString().split('T')[0];
+      try {
+        const parts = raw.trim().split(/[\/\.-]/);
+        if (parts.length === 3) {
+          let m, d, y;
+          if (parts[0].length === 4) {
+            y = parseInt(parts[0], 10);
+            m = parseInt(parts[1], 10);
+            d = parseInt(parts[2], 10);
+          } else {
+            m = parseInt(parts[0], 10);
+            d = parseInt(parts[1], 10);
+            y = parseInt(parts[2], 10);
+            if (y < 100) y += 2000;
+          }
+          if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+            const mm = String(m).padStart(2, '0');
+            const dd = String(d).padStart(2, '0');
+            return `${y}-${mm}-${dd}`;
+          }
+        }
+      } catch (e) {}
+      return new Date().toISOString().split('T')[0];
+    }
 
-  if (!transactions || transactions.length === 0) {
-    logMessage('Export failed: No transactions loaded yet.', 'error');
-    alert('Please select a CSV file first!');
-    return;
-  }
+    function extractMerchant(desc) {
+      if (!desc) return 'Merchant';
+      const cleaned = desc.replace(/#\d+|\bSQ\b|\bTST\b|\bPAYPAL\b/gi, '').trim();
+      const words = cleaned.split(/\s+/).slice(0, 3).join(' ');
+      return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Merchant';
+    }
 
-  let filtered = getFilteredTransactions();
-  logMessage(`Preparing export (${filtered.length} rows)...`, 'info');
+    // Render Preview Table
+    function renderTable() {
+      const tbody = document.getElementById('previewTableBody');
+      const startVal = document.getElementById('startDateInput').value;
+      const endVal = document.getElementById('endDateInput').value;
 
-  if (!filtered || filtered.length === 0) {
-    filtered = transactions;
-  }
+      let filtered = loadedTransactions;
+      if (startVal || endVal) {
+        filtered = loadedTransactions.filter(t => {
+          if (startVal && t.date < startVal) return false;
+          if (endVal && t.date > endVal) return false;
+          return true;
+        });
+      }
 
-  const selectedTx = filtered.filter(t => t.selected !== false);
-  
-  if (selectedTx.length === 0) {
-    logMessage('Export failed: 0 selected transactions.', 'error');
-    alert('No transactions selected to export!');
-    return;
-  }
+      document.getElementById('rowCountBadge').textContent = `${filtered.length} transactions`;
 
-  let csvRows = [];
-  csvRows.push('Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+              No transactions match current display filter.
+            </td>
+          </tr>`;
+        return;
+      }
 
-  selectedTx.forEach(t => {
-    const formattedDate = t.date || '';
-    const merchant = (t.merchant || '').replace(/"/g, '""');
-    const category = (t.category || '').replace(/"/g, '""');
-    const account = (t.account || 'My Bank').replace(/"/g, '""');
-    const description = (t.description || '').replace(/"/g, '""');
-    const notes = (t.notes || '').replace(/"/g, '""');
-    const amount = (typeof t.amount === 'number' ? t.amount : parseFloat(t.amount) || 0).toFixed(2);
-    const tags = (t.tags || '').replace(/"/g, '""');
+      tbody.innerHTML = '';
+      filtered.forEach(t => {
+        const tr = document.createElement('tr');
+        const amtClass = t.amount < 0 ? 'amount-negative' : 'amount-positive';
+        tr.innerHTML = `
+          <td>${t.date}</td>
+          <td><strong>${t.merchant}</strong></td>
+          <td>${t.category}</td>
+          <td>${t.account}</td>
+          <td>${t.description}</td>
+          <td>${t.notes}</td>
+          <td class="${amtClass}">$${t.amount.toFixed(2)}</td>
+          <td>${t.tags}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
-    csvRows.push(`${formattedDate};"${merchant}";"${category}";"${account}";"${description}";"${notes}";${amount};"${tags}"`);
-  });
+    // Export CSV matching template format exactly:
+    // Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)
+    function exportCSV() {
+      if (loadedTransactions.length === 0) {
+        alert('Please select your CSV file first!');
+        log('Export failed: No transactions loaded.', 'error');
+        return;
+      }
 
-  const csvContent = csvRows.join('\n');
-  const filename = 'origin-transaction-template.csv';
+      const startVal = document.getElementById('startDateInput').value;
+      const endVal = document.getElementById('endDateInput').value;
 
-  try {
-    logMessage(`Generating CSV Blob download (${selectedTx.length} items)...`, 'info');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    logMessage(`SUCCESS! File download triggered: ${filename}`, 'success');
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }, 500);
-  } catch (err) {
-    console.error(err);
-    logMessage(`Blob export error: ${err.message}`, 'error');
-  }
+      let list = loadedTransactions;
+      if (startVal || endVal) {
+        list = loadedTransactions.filter(t => {
+          if (startVal && t.date < startVal) return false;
+          if (endVal && t.date > endVal) return false;
+          return true;
+        });
+      }
 
-  showStatus(`Exported ${selectedTx.length} transactions!`, 'success');
-}
+      if (list.length === 0) {
+        log('Date range filter resulted in 0 rows. Exporting all rows instead.', 'info');
+        list = loadedTransactions;
+      }
 
-function loadSampleData() {
-  displaySelectedFileName('demo-sample-statement.csv');
-  logMessage('Loading built-in sample demo data...', 'info');
-  const sampleCSV = `Date,Description,Amount
-2026-08-01,WALMART GROCERY STORE #142,-124.50
-2026-08-02,TECH CORP PAYROLL DIRECT DEPOSIT,3250.00
-2026-08-03,STARBUCKS COFFEE,-5.75
-2026-08-04,NETFLIX MONTHLY SUBSCRIPTION,-15.99
-2026-08-05,SHELL GAS STATION,-45.00
-2026-08-06,ORIGIN SUBSCRIPTION,-12.99`;
-  
-  parseCSVFile(sampleCSV);
-}
+      log(`Exporting ${list.length} rows to origin-transaction-template.csv...`, 'info');
 
-function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
+      let csvRows = ['Transaction Date;Merchant;Category (optional);Account;Description;Notes (optional);Amount;Tags (optional)'];
 
-function escapeHtml(str) {
-  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+      list.forEach(t => {
+        const merchant = t.merchant.replace(/"/g, '""');
+        const category = t.category.replace(/"/g, '""');
+        const account = t.account.replace(/"/g, '""');
+        const desc = t.description.replace(/"/g, '""');
+        const notes = t.notes.replace(/"/g, '""');
+        const amount = t.amount.toFixed(2);
+        const tags = t.tags.replace(/"/g, '""');
+
+        csvRows.push(`${t.date};"${merchant}";"${category}";"${account}";"${desc}";"${notes}";${amount};"${tags}"`);
+      });
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'origin-transaction-template.csv');
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 500);
+
+      log(`SUCCESS! File downloaded with ${list.length} transactions.`, 'success');
+    }
   </script>
 </body>
 </html>
