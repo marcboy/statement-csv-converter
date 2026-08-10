@@ -26,7 +26,7 @@
       <div class="brand">
         <i class="fa-solid fa-file-csv brand-icon"></i>
         <h1>Origin <span>CSV Formatter</span></h1>
-        <span class="v-tag">v2.8.0</span>
+        <span class="v-tag">v2.9.0</span>
       </div>
       <div class="status-box" id="parserStatus">
         <i class="fa-solid fa-circle-check"></i> Ready
@@ -38,7 +38,7 @@
       <!-- File Selector Input & Active File Name Display -->
       <div class="tool-item file-selector-wrapper">
         <label for="fileInput">Select CSV File</label>
-        <input type="file" id="fileInput" class="form-control file-input-styled" accept=".csv,.txt,.log,.pdf,text/csv,text/plain,application/vnd.ms-excel">
+        <input type="file" id="fileInput" class="form-control file-input-styled" accept=".csv,.txt,.log,.pdf,text/csv,text/plain,application/vnd.ms-excel" onclick="this.value='';" onchange="if(this.files && this.files.length > 0) { handleFile(this.files[0]); }">
         <div id="fileDisplayBadge" class="file-badge">
           <i class="fa-solid fa-file-csv"></i> <span id="fileNameText">No file selected</span>
         </div>
@@ -136,7 +136,7 @@
 
     <!-- Footer -->
     <footer class="compact-footer">
-      <span>Origin Template Converter &bull; <strong style="color: var(--accent);">v2.8.0</strong> &bull; Built: <span style="font-family: var(--font-mono); font-weight: 600; color: #f59e0b;">2026-08-10 12:59:00 PDT</span></span>
+      <span>Origin Template Converter &bull; <strong style="color: var(--accent);">v2.9.0</strong> &bull; Built: <span style="font-family: var(--font-mono); font-weight: 600; color: #f59e0b;">2026-08-10 13:01:00 PDT</span></span>
     </footer>
   </div>
 

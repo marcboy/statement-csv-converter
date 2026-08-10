@@ -244,9 +244,11 @@ function parseCSVFile(csvText) {
 
   if (parsed.length > 0) {
     transactions = parsed;
+    logMessage(`CSV parsing successful: ${parsed.length} structured transactions extracted.`, 'success');
     renderTable();
     showStatus(`Parsed ${parsed.length} rows successfully`, 'success');
   } else {
+    logMessage('CSV structured parsing returned 0 rows. Attempting raw text parsing fallback...', 'info');
     parseRawText(csvText);
   }
 }
