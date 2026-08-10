@@ -20,7 +20,22 @@ const categoryRules = [
 
 document.addEventListener('DOMContentLoaded', () => {
   setupEvents();
+  logMessage('DOM fully loaded. Ready for statement file input.');
 });
+
+function logMessage(msg, type = 'info') {
+  console.log(`[StatementFlow] ${msg}`);
+  const container = document.getElementById('debugLogContainer');
+  if (container) {
+    const timeStr = new Date().toLocaleTimeString();
+    const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#06b6d4';
+    const div = document.createElement('div');
+    div.style.color = color;
+    div.innerHTML = `<span style="color:#64748b;">[${timeStr}]</span> ${msg}`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+}
 
 function setupEvents() {
   const fileInput = document.getElementById('fileInput');
@@ -85,6 +100,7 @@ function showStatus(msg, type = 'success') {
 
 function displaySelectedFileName(fileName) {
   currentFileName = fileName;
+  logMessage(`File selected: "${fileName}"`, 'info');
   const fileNameText = document.getElementById('fileNameText');
   if (fileNameText) {
     fileNameText.textContent = fileName;
@@ -94,20 +110,25 @@ function displaySelectedFileName(fileName) {
 
 async function handleFile(file) {
   displaySelectedFileName(file.name);
+  logMessage(`Beginning file read: ${file.name} (Size: ${file.size} bytes, Type: ${file.type || 'unknown'})`, 'info');
   showStatus(`Loaded: ${file.name}`, 'success');
 
   try {
     if (file.name.endsWith('.csv') || file.type === 'text/csv' || file.name.endsWith('.txt')) {
       const text = await file.text();
+      logMessage(`File read complete (${text.length} chars). Parsing CSV contents...`, 'info');
       parseCSVFile(text);
     } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      logMessage(`Reading PDF document...`, 'info');
       await parsePDFFile(file);
     } else {
       const text = await file.text();
+      logMessage(`Parsing plain text statement (${text.length} chars)...`, 'info');
       parseRawText(text);
     }
   } catch (err) {
     console.error(err);
+    logMessage(`ERROR reading file: ${err.message}`, 'error');
     showStatus('Error reading file contents', 'error');
   }
 }
@@ -528,19 +549,27 @@ function renderTable() {
 }
 
 function exportToOriginCSV() {
+  logMessage('Export button clicked.', 'info');
+
   if (!transactions || transactions.length === 0) {
+    logMessage('Export failed: No transactions loaded yet.', 'error');
     alert('Please select a CSV file first!');
     return;
   }
 
   let filtered = getFilteredTransactions();
+  logMessage(`Filtering transactions... (Total loaded: ${transactions.length}, Date filtered: ${filtered.length})`, 'info');
+
   if (!filtered || filtered.length === 0) {
-    filtered = transactions; // Fallback to all loaded transactions if date bounds misalign
+    logMessage('Date filter resulted in 0 transactions. Falling back to exporting all transactions.', 'info');
+    filtered = transactions;
   }
 
   const selectedTx = filtered.filter(t => t.selected !== false);
+  logMessage(`Exporting ${selectedTx.length} selected transactions...`, 'info');
   
   if (selectedTx.length === 0) {
+    logMessage('Export failed: 0 selected transactions.', 'error');
     alert('No transactions selected to export!');
     return;
   }
@@ -565,10 +594,11 @@ function exportToOriginCSV() {
   const filename = 'origin-transaction-template.csv';
 
   try {
-    // Primary: Blob URL Download
+    logMessage(`Generating CSV file download (${csvRows.length} rows, ${csvContent.length} bytes)...`, 'info');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    if (navigator.msSaveBlob) { // IE / Edge legacy
+    if (navigator.msSaveBlob) {
       navigator.msSaveBlob(blob, filename);
+      logMessage('Download triggered via msSaveBlob', 'success');
     } else {
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -577,6 +607,7 @@ function exportToOriginCSV() {
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
+      logMessage(`Download link clicked. Blob URL generated: ${url}`, 'success');
       setTimeout(() => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
@@ -584,7 +615,7 @@ function exportToOriginCSV() {
     }
   } catch (err) {
     console.error('Blob export error, using fallback Data URI:', err);
-    // Fallback: Data URI
+    logMessage(`Blob export failed, using Data URI fallback: ${err.message}`, 'error');
     const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);

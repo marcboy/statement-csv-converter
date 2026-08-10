@@ -26,7 +26,7 @@
       <div class="brand">
         <i class="fa-solid fa-file-csv brand-icon"></i>
         <h1>Origin <span>CSV Formatter</span></h1>
-        <span class="v-tag">v2.7.0</span>
+        <span class="v-tag">v2.8.0</span>
       </div>
       <div class="status-box" id="parserStatus">
         <i class="fa-solid fa-circle-check"></i> Ready
@@ -123,9 +123,20 @@
       </div>
     </section>
 
+    <!-- On-Screen Debug Log Console -->
+    <section class="card log-card" style="margin-top: 0.5rem; background: #000; border: 1px solid rgba(255,255,255,0.15);">
+      <div class="log-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent); font-family: var(--font-mono);"><i class="fa-solid fa-terminal"></i> Activity & Debug Console Log</span>
+        <button onclick="document.getElementById('debugLogContainer').innerHTML='';" class="btn btn-outline" style="padding: 2px 8px; font-size: 0.7rem;">Clear Log</button>
+      </div>
+      <div id="debugLogContainer" style="font-family: var(--font-mono); font-size: 0.78rem; color: #10b981; max-height: 160px; overflow-y: auto; background: #050811; padding: 0.5rem; border-radius: 4px; border: 1px solid #1e293b; line-height: 1.4;">
+        <div>[SYSTEM] Debug Logger Initialized v2.8.0. Ready for file selection or export actions.</div>
+      </div>
+    </section>
+
     <!-- Footer -->
     <footer class="compact-footer">
-      <span>Origin Template Converter &bull; <strong style="color: var(--accent);">v2.7.0</strong> &bull; Built: <span style="font-family: var(--font-mono); font-weight: 600; color: #f59e0b;">2026-08-10 12:57:45 PDT</span></span>
+      <span>Origin Template Converter &bull; <strong style="color: var(--accent);">v2.8.0</strong> &bull; Built: <span style="font-family: var(--font-mono); font-weight: 600; color: #f59e0b;">2026-08-10 12:59:00 PDT</span></span>
     </footer>
   </div>
 
