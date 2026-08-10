@@ -126,11 +126,13 @@ function showStatus(msg, type = 'success') {
 }
 
 function displaySelectedFileName(fileName) {
-  const infoEl = document.getElementById('selectedFileInfo');
-  const nameEl = document.getElementById('selectedFileName');
-  if (infoEl && nameEl) {
+  const bannerEl = document.getElementById('selectedFileBanner');
+  const nameEl = document.getElementById('selectedFileNameDisplay');
+  if (nameEl) {
     nameEl.textContent = fileName;
-    infoEl.style.display = 'inline-flex';
+  }
+  if (bannerEl) {
+    bannerEl.style.display = 'flex';
   }
 }
 

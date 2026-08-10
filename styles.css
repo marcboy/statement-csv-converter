@@ -548,20 +548,57 @@ body {
 .text-danger { color: var(--danger); }
 .text-success { color: var(--success); }
 
-.selected-file-info {
-  display: inline-flex;
+.selected-file-banner {
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: rgba(6, 182, 212, 0.15);
-  border: 1px solid rgba(6, 182, 212, 0.4);
-  border-radius: var(--radius-sm);
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  margin-top: 1.25rem;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1.5px solid rgba(6, 182, 212, 0.45);
+  border-radius: var(--radius-md);
   color: var(--text-main);
-  font-size: 0.9rem;
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.15);
+  text-align: left;
 }
 
-.selected-file-info i {
+.file-banner-icon {
+  font-size: 1.8rem;
   color: var(--accent);
+}
+
+.file-banner-details {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.file-banner-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.file-banner-name {
+  font-size: 1.05rem;
+  color: #fff;
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.file-banner-status {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.15);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .app-footer {
