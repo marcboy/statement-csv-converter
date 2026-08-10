@@ -32,6 +32,11 @@ function setupEvents() {
   const endDateInput = document.getElementById('endDate');
   const datePresetSelect = document.getElementById('datePreset');
 
+  // Input file click event to clear cached value
+  fileInput.addEventListener('click', () => {
+    fileInput.value = '';
+  });
+
   // Input file change event
   fileInput.addEventListener('change', (e) => {
     if (e.target.files && e.target.files.length > 0) {

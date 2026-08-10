@@ -141,37 +141,24 @@ body {
   border-color: var(--border-focus);
 }
 
-.custom-file-upload {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border-radius: var(--radius-sm);
+.file-input-styled {
+  padding: 0.35rem 0.5rem;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid var(--border-focus);
+  cursor: pointer;
+}
+
+.file-input-styled::file-selector-button {
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: #fff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  border: none;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.custom-file-upload:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.45);
-}
-
-.custom-file-upload input[type="file"] {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
+  margin-right: 0.5rem;
 }
 
 .file-badge {
